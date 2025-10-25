@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Тест УРиНИС — версия 1</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f7fa;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    #quiz-container {
+      background: white;
+      padding: 30px 40px;
+      border-radius: 16px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      max-width: 700px;
+      width: 100%;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .question {
+      font-size: 18px;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+    .answers button {
+      display: block;
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .answers button:hover {
+      background-color: #f0f0f0;
+    }
+    .correct {
+      background-color: #c8f7c5 !important;
+      border-color: #3cb043 !important;
+    }
+    .wrong {
+      background-color: #f7c5c5 !important;
+      border-color: #d22 !important;
+    }
+    #next-btn {
+      display: block;
+      margin: 20px auto 0;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 8px;
+      background: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    #next-btn:hover {
+      background: #0056b3;
+    }
+    #result {
+      text-align: center;
+      font-size: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div id="quiz-container">
+    <h1>Тест УРиНИС</h1>
+    <div id="question-container">
+      <div class="question" id="question"></div>
+      <div class="answers" id="answers"></div>
+      <button id="next-btn">Далее</button>
+    </div>
+    <div id="result" style="display:none;"></div>
+  </div>
+
+  <script>
+    const quizData = [
+      {
+        question: "1. Интенсивность отказов количественно характеризует:",
+        options: ["наработку между отказами", "вероятность безотказной работы", "вероятность отказа", "работоспособное состояние"],
+        correct: 2
+      },
+      {
+        question: "2. Объем работ до первого перехода в неработоспособное состояние – это:",
+        options: ["наработка после отказа", "случайная наработка", "наработка до отказа", "средняя наработка"],
+        correct: 2
+      },
+      {
+        question: "3. Состояние объекта, из которого невозможен переход ни в какое другое:",
+        options: ["работоспособное", "поглощающее", "предельное", "неисправное"],
+        correct: 1
+      },
+      {
+        question: "4. Формулировка показателя надежности должна содержать:",
+        options: ["метод расчета", "объемно-временной параметр", "свойство надежности", "значение наработки"],
+        correct: 2
+      },
+      {
+        question: "5. Сколько основных принципов тестирования выделяют (по ISTQB)?",
+        options: ["7", "5", "8", "6", "9"],
+        correct: 0
+      },
+      {
+        question: "6. Директивный срок восстановления ИС определяется:",
+        options: ["ремонтопригодностью", "ценностью обрабатываемой информации", "экономической эффективностью", "сложностью системы"],
+        correct: 1
+      },
+      {
+        question: "7. Тестирование ПО — это процесс исследования/испытания ПО с целью определения соответствия между текущим и ожидаемым поведением программы.",
+        options: ["Верно", "Неверно"],
+        correct: 0
+      },
+      {
+        question: "8. Перед проведением тестирования тестировщику необходимо:",
+        options: ["подготовить данные для использования в тестах", "найти отклонения в поведении ПО", "составить отчет", "изучить требования к ПО", "подготовить тестовые сценарии"],
+        correct: 3
+      },
+      {
+        question: "9. Что из перечисленного относится к уровням тестирования?",
+        options: ["Интеграционное тестирование", "Системное тестирование", "Модульное тестирование", "Приемочное тестирование"],
+        correct: 0
+      },
+      {
+        question: "10. Единичный показатель в отличие от комплексного характеризует:",
+        options: ["только один объект", "одно свойство", "более одного состояния", "два и более свойств"],
+        correct: 1
+      }
+    ];
+
+    const questionEl = document.getElementById("question");
+    const answersEl = document.getElementById("answers");
+    const nextBtn = document.getElementById("next-btn");
+    const resultEl = document.getElementById("result");
+
+    let currentQuestion = 0;
+    let score = 0;
+    let answered = false;
+
+    function loadQuestion() {
+      const q = quizData[currentQuestion];
+      questionEl.textContent = q.question;
+      answersEl.innerHTML = "";
+      q.options.forEach((option, index) => {
+        const btn = document.createElement("button");
+        btn.textContent = option;
+        btn.addEventListener("click", () => checkAnswer(index, btn));
+        answersEl.appendChild(btn);
+      });
+      answered = false;
+      nextBtn.style.display = "none";
+    }
+
+    function checkAnswer(index, button) {
+      if (answered) return;
+      answered = true;
+      const correctIndex = quizData[currentQuestion].correct;
+      const buttons = answersEl.querySelectorAll("button");
+      buttons.forEach((btn, i) => {
+        if (i === correctIndex) btn.classList.add("correct");
+        if (i === index && i !== correctIndex) btn.classList.add("wrong");
+        btn.disabled = true;
+      });
+      if (index === correctIndex) score++;
+      nextBtn.style.display = "block";
+    }
+
+    nextBtn.addEventListener("click", () => {
+      currentQuestion++;
+      if (currentQuestion < quizData.length) {
+        loadQuestion();
+      } else {
+        showResult();
+      }
+    });
+
+    function showResult() {
+      document.getElementById("question-container").style.display = "none";
+      resultEl.style.display = "block";
+      resultEl.textContent = `Результат: ${score} из ${quizData.length}`;
+    }
+
+    loadQuestion();
+  </script>
+</body>
+</html>
