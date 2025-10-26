@@ -20,10 +20,11 @@ type ProfileData struct {
 }
 
 type Meter struct {
-	ID    int    `json:"id"`
-	Month string `json:"month"`
-	Hot   int    `json:"hot"`
-	Cold  int    `json:"cold"`
+	ID      int    `json:"id"`
+	Address string `json:"address"`
+	Month   string `json:"month"`
+	Hot     int    `json:"hot"`
+	Cold    int    `json:"cold"`
 }
 
 type EPD struct {
@@ -48,9 +49,8 @@ func GetProfile(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// Получаем данные клиента
 	var profile ProfileData
-	profile.Apartments = make([]Apartment, 0) // чтобы вернуть [] вместо null
+	profile.Apartments = make([]Apartment, 0)
 
 	err := db.QueryRow(`SELECT [ФИО], [Номер_телефона] FROM [Клиент] WHERE [Id_клиента] = @p1`, clientID).
 		Scan(&profile.FullName, &profile.Phone)
@@ -59,7 +59,6 @@ func GetProfile(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// Получаем список квартир клиента
 	rows, err := db.Query(`SELECT [Адрес] FROM [Квартира] WHERE [Id_владельца] = @p1`, clientID)
 	if err == nil {
 		defer rows.Close()
@@ -68,7 +67,6 @@ func GetProfile(c *gin.Context, db *sql.DB) {
 			if scanErr := rows.Scan(&a.Address); scanErr == nil {
 				profile.Apartments = append(profile.Apartments, a)
 			}
-			// при ошибке Scan пропускаем строку (можно также логировать)
 		}
 	}
 
@@ -84,11 +82,11 @@ func GetProfileMeters(c *gin.Context, db *sql.DB) {
 	}
 
 	rows, err := db.Query(`
-		SELECT ps.[Номер], ps.[Расчётный_месяц], ps.[Горячая_вода], ps.[Холодная_вода]
+		SELECT ps.[Номер], ps.[Адрес], ps.[Расчётный_месяц], ps.[Горячая_вода], ps.[Холодная_вода]
 		FROM [Показание_счётчиков] ps
 		JOIN [Квартира] k ON ps.[Адрес] = k.[Адрес]
 		WHERE k.[Id_владельца] = @p1
-		ORDER BY ps.[Расчётный_месяц] DESC
+		ORDER BY ps.[Адрес], ps.[Расчётный_месяц] DESC
 	`, clientID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -102,10 +100,10 @@ func GetProfileMeters(c *gin.Context, db *sql.DB) {
 			m        Meter
 			rawMonth time.Time
 		)
-		if err := rows.Scan(&m.ID, &rawMonth, &m.Hot, &m.Cold); err != nil {
+		if err := rows.Scan(&m.ID, &m.Address, &rawMonth, &m.Hot, &m.Cold); err != nil {
 			continue
 		}
-		m.Month = rawMonth.Format("2006-01") // ← форматируем YYYY-MM
+		m.Month = rawMonth.Format("2006-01")
 		meters = append(meters, m)
 	}
 	c.JSON(http.StatusOK, meters)
@@ -141,12 +139,10 @@ func GetProfileEPD(c *gin.Context, db *sql.DB) {
 			e        EPD
 			rawMonth sql.NullTime
 		)
-		// получаем дату в виде sql.NullTime
 		if err := rows.Scan(&e.DocNumber, &rawMonth, &e.Total); err != nil {
 			continue
 		}
 
-		// форматируем в "YYYY-MM"
 		if rawMonth.Valid {
 			e.Month = rawMonth.Time.Format("2006-01")
 		} else {

@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import api from "../api/api";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../hooks/useAuth";
 
+
+
 type Apartment = { address: string };
-type Meter = { id: number; month: string; hot: number; cold: number; docNumber?: string };
+type Meter = { id: number; month: string; hot: number; cold: number; address: string; docNumber?: string };
 type EPD = { id: number; docNumber: string; month: string; total: number };
 type Debt = { id: number; address: string; amount: number; dueDate: string };
 
@@ -24,6 +26,14 @@ export default function Profile() {
   const [coldWater, setColdWater] = useState("");
   const [billingMonth, setBillingMonth] = useState(new Date().toISOString().slice(0, 7));
   const [editingMeter, setEditingMeter] = useState<Meter | null>(null);
+
+  //переход для на раздел передать показания
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const scrollToForm = () => {
+    if (formRef.current) {
+      formRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   // === сортировка ЕПД (по дате убыванию) ===
   const sortEpdsDesc = (list: EPD[]) =>
@@ -115,6 +125,7 @@ export default function Profile() {
     setHotWater(meter.hot.toString());
     setColdWater(meter.cold.toString());
     setBillingMonth(meter.month);
+    scrollToForm();
   };
 
   const cancelEdit = () => {
@@ -150,6 +161,7 @@ export default function Profile() {
         <h3>Показания счётчиков</h3>
 
         <form
+          ref={formRef}
           onSubmit={handleSubmitMeters}
           style={{ marginBottom: 20, padding: 20, border: "1px solid #ccc", borderRadius: 8 }}
         >
@@ -226,38 +238,44 @@ export default function Profile() {
         {meters.length === 0 ? (
           <p>Нет данных</p>
         ) : (
-          <table border={1} cellPadding={6}>
-            <thead>
-              <tr>
-                <th>Месяц</th>
-                <th>Горячая вода</th>
-                <th>Холодная вода</th>
-                <th>Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {meters.map((m) => (
-                <tr key={m.id}>
-                  <td>{m.month}</td>
-                  <td>{m.hot}</td>
-                  <td>{m.cold}</td>
-                  <td>
-                    <button
-                      onClick={() => startEditMeter(m)}
-                      style={{
-                        padding: "5px 10px",
-                        backgroundColor: "#ffc107",
-                        border: "none",
-                        borderRadius: 4,
-                      }}
-                    >
-                      Редактировать
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          Object.entries(
+            meters.reduce((acc: Record<string, Meter[]>, m) => {
+              if (!acc[m.address]) acc[m.address] = [];
+              acc[m.address].push(m);
+              return acc;
+            }, {})
+          ).map(([address, list]) => (
+            <div key={address} style={{ marginBottom: 30, background: "#f9f9f9", padding: 15, borderRadius: 10 }}>
+              <h4>🏠 {address}</h4>
+              <table border={1} cellPadding={6} style={{ width: "100%" }}>
+                <thead>
+                  <tr>
+                    <th>Месяц</th>
+                    <th>Горячая вода</th>
+                    <th>Холодная вода</th>
+                    <th>Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((m) => (
+                    <tr key={m.id}>
+                      <td>{m.month}</td>
+                      <td>{m.hot}</td>
+                      <td>{m.cold}</td>
+                      <td>
+                        <button
+                          onClick={() => startEditMeter(m)}
+                          style={{ padding: "5px 10px", backgroundColor: "#ffc107", border: "none", borderRadius: 4 }}
+                        >
+                          Редактировать
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))
         )}
       </section>
 
