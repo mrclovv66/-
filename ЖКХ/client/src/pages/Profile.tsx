@@ -3,8 +3,6 @@ import api from "../api/api";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../hooks/useAuth";
 
-
-
 type Apartment = { address: string };
 type Meter = { id: number; month: string; hot: number; cold: number; address: string; docNumber?: string };
 type EPD = { id: number; docNumber: string; month: string; total: number };
@@ -26,8 +24,9 @@ export default function Profile() {
   const [coldWater, setColdWater] = useState("");
   const [billingMonth, setBillingMonth] = useState(new Date().toISOString().slice(0, 7));
   const [editingMeter, setEditingMeter] = useState<Meter | null>(null);
+  const [selectedAddress, setSelectedAddress] = useState<string>("");
 
-  //переход для на раздел передать показания
+  // ссылка для прокрутки к форме
   const formRef = useRef<HTMLFormElement | null>(null);
   const scrollToForm = () => {
     if (formRef.current) {
@@ -35,11 +34,11 @@ export default function Profile() {
     }
   };
 
-  // === сортировка ЕПД (по дате убыванию) ===
+  // сортировка ЕПД по дате (новые сверху)
   const sortEpdsDesc = (list: EPD[]) =>
     [...list].sort((a, b) => (a.month < b.month ? 1 : a.month > b.month ? -1 : 0));
 
-  // === загрузка данных профиля ===
+  // загрузка профиля
   useEffect(() => {
     if (!token) return;
 
@@ -54,11 +53,16 @@ export default function Profile() {
         setMeters(metersRes.data);
         setEpds(sortEpdsDesc(epdRes.data));
         setDebts(debtsRes.data);
+
+        // выбираем первую квартиру по умолчанию
+        if (profileRes.data.apartments.length > 0) {
+          setSelectedAddress(profileRes.data.apartments[0].address);
+        }
       })
       .catch(console.error);
   }, [token]);
 
-  // === отправка или обновление показаний ===
+  // передача или обновление показаний
   const handleSubmitMeters = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -80,7 +84,7 @@ export default function Profile() {
 
       const meterData = {
         DocNumber: docNumber,
-        Address: data?.apartments[0]?.address || "Адрес клиента",
+        Address: selectedAddress,
         BillingMonth: normalizedMonth,
         HotWater: hot,
         ColdWater: cold,
@@ -95,7 +99,6 @@ export default function Profile() {
         alert("Показания переданы!");
       }
 
-      // Очистка формы и обновление данных
       setHotWater("");
       setColdWater("");
       await reloadData();
@@ -105,7 +108,7 @@ export default function Profile() {
     }
   };
 
-  // === обновление таблиц после изменений ===
+  // обновление данных
   const reloadData = async () => {
     try {
       const [metersRes, epdRes] = await Promise.all([
@@ -119,12 +122,13 @@ export default function Profile() {
     }
   };
 
-  // === редактирование показаний ===
+  // редактирование показаний
   const startEditMeter = (meter: Meter) => {
     setEditingMeter(meter);
     setHotWater(meter.hot.toString());
     setColdWater(meter.cold.toString());
     setBillingMonth(meter.month);
+    setSelectedAddress(meter.address); // устанавливаем адрес выбранной квартиры
     scrollToForm();
   };
 
@@ -133,6 +137,9 @@ export default function Profile() {
     setHotWater("");
     setColdWater("");
     setBillingMonth(new Date().toISOString().slice(0, 7));
+    if (data?.apartments.length) {
+      setSelectedAddress(data.apartments[0].address);
+    }
   };
 
   return (
@@ -166,6 +173,23 @@ export default function Profile() {
           style={{ marginBottom: 20, padding: 20, border: "1px solid #ccc", borderRadius: 8 }}
         >
           <h4>{editingMeter ? "Редактировать показания" : "Передать показания"}</h4>
+
+          {/* выбор адреса квартиры */}
+          <div style={{ marginBottom: 10 }}>
+            <label>Квартира:</label>
+            <select
+              value={selectedAddress}
+              onChange={(e) => setSelectedAddress(e.target.value)}
+              required
+              style={{ marginLeft: 10, padding: 5 }}
+            >
+              {data?.apartments.map((a, i) => (
+                <option key={i} value={a.address}>
+                  {a.address}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div style={{ marginBottom: 10 }}>
             <label>Расчетный месяц:</label>
@@ -235,6 +259,7 @@ export default function Profile() {
           )}
         </form>
 
+        {/* Таблица показаний */}
         {meters.length === 0 ? (
           <p>Нет данных</p>
         ) : (

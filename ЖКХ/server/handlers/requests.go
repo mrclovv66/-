@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -11,6 +12,7 @@ import (
 type Request struct {
 	ID          int    `json:"id"`
 	ClientID    int    `json:"client_id"`
+	Address     string `json:"address"`
 	RequestType string `json:"request_type"`
 	Description string `json:"description"`
 	CreatedAt   string `json:"created_at"`
@@ -25,19 +27,23 @@ func GetRequests(c *gin.Context, db *sql.DB) {
 	var rows *sql.Rows
 	var err error
 
-	// 🔹 Клиент видит только свои заявки
 	if role == "client" {
+		// 🔹 Клиент видит только свои заявки
 		rows, err = db.Query(`
-			SELECT [ID_заявки], [ID_клиента], [Тип_заявки], [Описание], [Дата_создания], [Статус]
+			SELECT [ID_заявки], [ID_клиента], [Адрес_квартиры], [Тип_заявки],
+			       [Описание], [Дата_создания], [Статус]
 			FROM [Заявки]
 			WHERE [ID_клиента] = @p1
-			ORDER BY [Дата_создания] DESC`, clientID)
+			ORDER BY [Дата_создания] DESC
+		`, clientID)
 	} else {
-		// 🔹 Сотрудник / админ видит все заявки
+		// 🔹 Админ или сотрудник видят все заявки
 		rows, err = db.Query(`
-			SELECT [ID_заявки], [ID_клиента], [Тип_заявки], [Описание], [Дата_создания], [Статус]
+			SELECT [ID_заявки], [ID_клиента], [Адрес_квартиры], [Тип_заявки],
+			       [Описание], [Дата_создания], [Статус]
 			FROM [Заявки]
-			ORDER BY [Дата_создания] DESC`)
+			ORDER BY [Дата_создания] DESC
+		`)
 	}
 
 	if err != nil {
@@ -49,8 +55,10 @@ func GetRequests(c *gin.Context, db *sql.DB) {
 	var requests []Request
 	for rows.Next() {
 		var r Request
-		rows.Scan(&r.ID, &r.ClientID, &r.RequestType, &r.Description, &r.CreatedAt, &r.Status)
-		requests = append(requests, r)
+		err := rows.Scan(&r.ID, &r.ClientID, &r.Address, &r.RequestType, &r.Description, &r.CreatedAt, &r.Status)
+		if err == nil {
+			requests = append(requests, r)
+		}
 	}
 
 	c.JSON(http.StatusOK, requests)
@@ -60,33 +68,36 @@ func GetRequests(c *gin.Context, db *sql.DB) {
 func CreateRequest(c *gin.Context, db *sql.DB) {
 	clientID, exists := c.Get("client_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Неавторизован"})
 		return
 	}
 
 	var req struct {
+		Address     string `json:"address"`
 		RequestType string `json:"request_type"`
 		Description string `json:"description"`
 	}
 
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Некорректные данные"})
 		return
 	}
 
+	// Добавляем запись с текущей датой
 	_, err := db.Exec(`
-		INSERT INTO [Заявки] ([ID_клиента], [Тип_заявки], [Описание])
-		VALUES (@p1, @p2, @p3)`, clientID, req.RequestType, req.Description)
+		INSERT INTO [Заявки] ([ID_клиента], [Адрес_квартиры], [Тип_заявки], [Описание], [Дата_создания])
+		VALUES (@p1, @p2, @p3, @p4, @p5)
+	`, clientID, req.Address, req.RequestType, req.Description, time.Now().Format("2006-01-02"))
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "Request created"})
+	c.JSON(http.StatusCreated, gin.H{"message": "Заявка успешно создана"})
 }
 
-// ===== Обновление статуса заявки (для сотрудника/админа) =====
+// ===== Обновление статуса заявки (для сотрудников/админов) =====
 func UpdateRequestStatus(c *gin.Context, db *sql.DB) {
 	role, _ := c.Get("role")
 	if role == "client" {
@@ -100,15 +111,17 @@ func UpdateRequestStatus(c *gin.Context, db *sql.DB) {
 	}
 
 	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Некорректные данные"})
 		return
 	}
 
-	_, err := db.Exec("UPDATE [Заявки] SET [Статус] = @p1 WHERE [ID_заявки] = @p2", req.Status, id)
+	_, err := db.Exec(`
+		UPDATE [Заявки] SET [Статус] = @p1 WHERE [ID_заявки] = @p2
+	`, req.Status, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Request status updated"})
+	c.JSON(http.StatusOK, gin.H{"message": "Статус обновлён"})
 }
