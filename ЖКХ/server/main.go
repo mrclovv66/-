@@ -82,5 +82,6 @@ func RegisterRoutes(r *gin.Engine) {
 		api.GET("/requests", middleware.RequireAuth(), func(c *gin.Context) { handlers.GetRequests(c, db) })
 		api.POST("/requests", middleware.RequireAuth(), func(c *gin.Context) { handlers.CreateRequest(c, db) })
 		api.PUT("/requests/:id/status", middleware.RequireAuth(), func(c *gin.Context) { handlers.UpdateRequestStatus(c, db) })
+		api.DELETE("/requests/:id", middleware.RequireAuth(), func(c *gin.Context) { handlers.DeleteRequest(c, db) })
 	}
 }

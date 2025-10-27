@@ -43,6 +43,7 @@ export default function NavBar() {
           <Link to="/meters">Показания</Link>
           <Link to="/epds">ЕПД</Link>
           <Link to="/debts">Задолженности</Link>
+          <Link to="/requests">Заявки</Link>
         </>
       )}
 
