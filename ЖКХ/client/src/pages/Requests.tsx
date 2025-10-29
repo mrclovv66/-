@@ -27,6 +27,7 @@ export default function Requests() {
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [searchTerm, setSearchTerm] = useState(""); // 🔹 новое состояние для поиска
 
   // === загрузка данных ===
   useEffect(() => {
@@ -34,10 +35,14 @@ export default function Requests() {
     if (role === "client") loadApartments();
   }, [role]);
 
+  // === загрузка заявок ===
   const loadRequests = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/requests");
+      const url = searchTerm
+        ? `/requests?search=${encodeURIComponent(searchTerm)}`
+        : "/requests";
+      const res = await api.get(url);
       setRequests(res.data || []);
     } catch (err: any) {
       setError("Ошибка загрузки заявок: " + (err.response?.data?.error || err.message));
@@ -46,6 +51,7 @@ export default function Requests() {
     }
   };
 
+  // === загрузка квартир (для клиента) ===
   const loadApartments = async () => {
     try {
       const res = await api.get("/profile");
@@ -82,7 +88,6 @@ export default function Requests() {
   const updateStatus = async (id: number, status: string) => {
     try {
       await api.put(`/requests/${id}/status`, { status });
-      alert(`Статус заявки №${id} изменён на "${status}"`);
       loadRequests();
     } catch (err: any) {
       alert("Ошибка изменения статуса: " + (err.response?.data?.error || err.message));
@@ -101,7 +106,7 @@ export default function Requests() {
     }
   };
 
-  // === отображение кнопок действий ===
+  // === кнопки действий в зависимости от статуса ===
   const renderStatusButtons = (r: Request) => {
     if (role !== "employee" && role !== "admin") return null;
 
@@ -123,7 +128,6 @@ export default function Requests() {
             В работу
           </button>
         );
-
       case "в работе":
         return (
           <>
@@ -141,16 +145,7 @@ export default function Requests() {
             </button>
           </>
         );
-
       case "выполнена":
-        return (
-          <button
-            onClick={() => deleteRequest(r.id)}
-            style={{ ...btnStyle, backgroundColor: "#6c757d" }}
-          >
-            Удалить
-          </button>
-        );
       case "отклонена":
         return (
           <button
@@ -160,7 +155,6 @@ export default function Requests() {
             Удалить
           </button>
         );
-
       default:
         return null;
     }
@@ -170,13 +164,49 @@ export default function Requests() {
     <div>
       <NavBar />
       <h2>Заявки</h2>
+
       {error && <p style={{ color: "red" }}>{error}</p>}
+
+      {/* === Форма поиска (для всех ролей) === */}
+      {(role === "employee" || role === "admin") && (<div style={{ marginBottom: 20 }}>
+        <input
+          type="text"
+          placeholder="Поиск по ФИО, адресу, описанию, типу или статусу..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{
+            padding: "6px 10px",
+            width: "300px",
+            marginRight: 8,
+            borderRadius: 4,
+            border: "1px solid #ccc",
+          }}
+        />
+        <button
+          onClick={loadRequests}
+          style={{
+            padding: "6px 12px",
+            backgroundColor: "#007bff",
+            color: "white",
+            border: "none",
+            borderRadius: 4,
+          }}
+        >
+          Найти
+        </button>
+      </div>)}
 
       {/* === Клиент: форма подачи заявки === */}
       {role === "client" && (
         <form
           onSubmit={handleSubmit}
-          style={{ marginBottom: 20, padding: 20, border: "1px solid #ccc", borderRadius: 8 }}
+          style={{
+            marginBottom: 20,
+            padding: 20,
+            border: "1px solid #ccc",
+            borderRadius: 8,
+            backgroundColor: "#f9f9f9",
+          }}
         >
           <h3>Подать заявку</h3>
 
@@ -215,7 +245,7 @@ export default function Requests() {
           <div style={{ marginBottom: 10 }}>
             <label>Описание:</label>
             <textarea
-              placeholder="Опишите вашу проблему"
+              placeholder="Опишите проблему"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               required

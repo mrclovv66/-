@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,15 +21,20 @@ type Request struct {
 	Status      string `json:"status"`
 }
 
-// ===== Получение списка заявок =====
+// ===== Получение списка заявок (поиск только для employee/admin) =====
 func GetRequests(c *gin.Context, db *sql.DB) {
 	role, _ := c.Get("role")
 	clientID, _ := c.Get("client_id")
+	search := strings.TrimSpace(c.Query("search"))
 
-	var rows *sql.Rows
-	var err error
+	var (
+		rows *sql.Rows
+		err  error
+	)
 
-	if role == "client" {
+	switch role {
+	case "client":
+		// 🔹 Клиент: только свои заявки, без поиска
 		rows, err = db.Query(`
 			SELECT 
 				z.[ID_заявки],
@@ -41,24 +47,33 @@ func GetRequests(c *gin.Context, db *sql.DB) {
 				z.[Статус]
 			FROM [Заявки] z
 			JOIN [Клиент] k ON z.[ID_клиента] = k.[Id_клиента]
-			WHERE z.[ID_клиента] = @p1
+			WHERE z.[ID_клиента]=@p1
 			ORDER BY z.[Дата_создания] DESC
 		`, clientID)
-	} else {
-		rows, err = db.Query(`
-			SELECT 
-				z.[ID_заявки],
-				z.[ID_клиента],
-				k.[ФИО] AS [ФИО_клиента],
-				z.[Адрес_квартиры],
-				z.[Тип_заявки],
-				z.[Описание],
-				z.[Дата_создания],
-				z.[Статус]
-			FROM [Заявки] z
-			JOIN [Клиент] k ON z.[ID_клиента] = k.[Id_клиента]
-			ORDER BY z.[Дата_создания] DESC
-		`)
+
+	default: // employee/admin
+		if search == "" {
+			// 🔹 Без поиска — возвращаем все заявки
+			rows, err = db.Query(`
+				SELECT 
+					z.[ID_заявки],
+					z.[ID_клиента],
+					k.[ФИО] AS [ФИО_клиента],
+					z.[Адрес_квартиры],
+					z.[Тип_заявки],
+					z.[Описание],
+					z.[Дата_создания],
+					z.[Статус]
+				FROM [Заявки] z
+				JOIN [Клиент] k ON z.[ID_клиента] = k.[Id_клиента]
+				ORDER BY z.[Дата_создания] DESC
+			`)
+		} else {
+			// 🔹 Поиск — вызываем табличную функцию напрямую
+			rows, err = db.Query(`
+				SELECT * FROM dbo.SearchRequests(@p1)
+			`, search)
+		}
 	}
 
 	if err != nil {
@@ -69,11 +84,21 @@ func GetRequests(c *gin.Context, db *sql.DB) {
 
 	var requests []Request
 	for rows.Next() {
-		var r Request
-		err := rows.Scan(&r.ID, &r.ClientID, &r.FullName, &r.Address, &r.RequestType, &r.Description, &r.CreatedAt, &r.Status)
-		if err == nil {
-			requests = append(requests, r)
+		var (
+			r       Request
+			rawDate sql.NullTime
+		)
+		if err := rows.Scan(
+			&r.ID, &r.ClientID, &r.FullName, &r.Address,
+			&r.RequestType, &r.Description, &rawDate, &r.Status,
+		); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
 		}
+		if rawDate.Valid {
+			r.CreatedAt = rawDate.Time.Format("2006-01-02")
+		}
+		requests = append(requests, r)
 	}
 
 	c.JSON(http.StatusOK, requests)
