@@ -12,7 +12,7 @@ import (
 )
 
 func GetClients(c *gin.Context, db *sql.DB) {
-	rows, err := db.Query("SELECT [Id_клиента], [ФИО], [Номер_телефона] FROM [Клиент]")
+	rows, err := db.Query("SELECT Id_клиента, ФИО, Номер_телефона FROM Клиент WHERE Роль = 'client'")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -45,8 +45,16 @@ func CreateClient(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	_, err := db.Exec("INSERT INTO [Клиент] ([ФИО], [Номер_телефона], [Роль]) VALUES (@p1, @p2, @p3)",
-		client.FullName, client.Phone, "client")
+	// Если пароль не передан — ставим значение по умолчанию
+	if client.Password == "" {
+		client.Password = "1234"
+	}
+
+	_, err := db.Exec(`
+		INSERT INTO [Клиент] ([ФИО], [Номер_телефона], [Пароль], [Роль])
+		VALUES (@p1, @p2, @p3, @p4)
+	`, client.FullName, client.Phone, client.Password, "client")
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -76,11 +84,12 @@ func UpdateClient(c *gin.Context, db *sql.DB) {
 func DeleteClient(c *gin.Context, db *sql.DB) {
 	id, _ := strconv.Atoi(c.Param("id"))
 
-	_, err := db.Exec("DELETE FROM [Клиент] WHERE [Id_клиента]=@p1", id)
+	// Вызываем хранимую процедуру
+	_, err := db.Exec("EXEC УдалитьКлиента @Id_клиента = @p1", id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Client deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": "Клиент и связанные данные успешно удалены"})
 }

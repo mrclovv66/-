@@ -44,6 +44,7 @@ func RegisterRoutes(r *gin.Engine) {
 		// ===== Остальные маршруты =====
 
 		// Clients
+		api.GET("/clients", middleware.RequireAuth(), func(c *gin.Context) { handlers.GetClients(c, db) })
 		api.POST("/clients", middleware.RequireAuth(), func(c *gin.Context) { handlers.CreateClient(c, db) })
 		api.PUT("/clients/:id", middleware.RequireAuth(), func(c *gin.Context) { handlers.UpdateClient(c, db) })
 		api.DELETE("/clients/:id", middleware.RequireAuth(), func(c *gin.Context) { handlers.DeleteClient(c, db) })

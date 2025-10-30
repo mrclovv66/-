@@ -8,6 +8,7 @@ type Client = {
   id: number;
   fullName: string;
   phone: string;
+  password?: string;
 };
 
 export default function Clients() {
@@ -17,14 +18,13 @@ export default function Clients() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [newClient, setNewClient] = useState({ fullName: "", phone: "" });
+  const [newClient, setNewClient] = useState({ fullName: "", phone: "", password: "" });
 
   useEffect(() => {
     loadClients();
   }, []);
 
   useEffect(() => {
-    // Фильтрация клиентов по поисковому запросу
     const filtered = clients.filter(client =>
       client.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       client.phone.includes(searchTerm)
@@ -33,16 +33,16 @@ export default function Clients() {
   }, [clients, searchTerm]);
 
   const loadClients = () => {
-    api.get("/clients").then((res) => {
-      setClients(res.data);
-    }).catch((err) => console.error(err));
+    api.get("/clients")
+      .then((res) => setClients(res.data))
+      .catch((err) => console.error(err));
   };
 
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await api.post("/clients", newClient);
-      setNewClient({ fullName: "", phone: "" });
+      setNewClient({ fullName: "", phone: "", password: "" });
       setShowAddForm(false);
       loadClients();
     } catch (error: any) {
@@ -56,7 +56,7 @@ export default function Clients() {
     try {
       await api.put(`/clients/${editingClient.id}`, newClient);
       setEditingClient(null);
-      setNewClient({ fullName: "", phone: "" });
+      setNewClient({ fullName: "", phone: "", password: "" });
       loadClients();
     } catch (error: any) {
       alert("Ошибка при редактировании клиента: " + (error.response?.data?.error || error.message));
@@ -75,12 +75,16 @@ export default function Clients() {
 
   const startEdit = (client: Client) => {
     setEditingClient(client);
-    setNewClient({ fullName: client.fullName, phone: client.phone });
+    setNewClient({
+      fullName: client.fullName,
+      phone: client.phone,
+      password: client.password || ""
+    });
   };
 
   const cancelEdit = () => {
     setEditingClient(null);
-    setNewClient({ fullName: "", phone: "" });
+    setNewClient({ fullName: "", phone: "", password: "" });
   };
 
   return (
@@ -99,12 +103,18 @@ export default function Clients() {
         />
       </div>
 
-      {/* Кнопка добавления для employee и admin */}
+      {/* Кнопка добавления */}
       {(role === "employee" || role === "admin") && (
         <div style={{ marginBottom: 20 }}>
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            style={{ padding: "10px 20px", backgroundColor: "#007bff", color: "white", border: "none", borderRadius: 4 }}
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: 4,
+            }}
           >
             {showAddForm ? "Отмена" : "Добавить клиента"}
           </button>
@@ -113,8 +123,12 @@ export default function Clients() {
 
       {/* Форма добавления */}
       {showAddForm && (
-        <form onSubmit={handleAddClient} style={{ marginBottom: 20, padding: 20, border: "1px solid #ccc", borderRadius: 8 }}>
+        <form
+          onSubmit={handleAddClient}
+          style={{ marginBottom: 20, padding: 20, border: "1px solid #ccc", borderRadius: 8 }}
+        >
           <h3>Добавить клиента</h3>
+
           <div style={{ marginBottom: 10 }}>
             <label>ФИО:</label>
             <input
@@ -125,6 +139,7 @@ export default function Clients() {
               style={{ marginLeft: 10, padding: 5, width: 250 }}
             />
           </div>
+
           <div style={{ marginBottom: 10 }}>
             <label>Телефон:</label>
             <input
@@ -135,7 +150,28 @@ export default function Clients() {
               style={{ marginLeft: 10, padding: 5, width: 250 }}
             />
           </div>
-          <button type="submit" style={{ padding: "10px 20px", backgroundColor: "#28a745", color: "white", border: "none", borderRadius: 4 }}>
+
+          <div style={{ marginBottom: 10 }}>
+            <label>Пароль:</label>
+            <input
+              type="password"
+              value={newClient.password}
+              onChange={(e) => setNewClient({ ...newClient, password: e.target.value })}
+              required
+              style={{ marginLeft: 10, padding: 5, width: 250 }}
+            />
+          </div>
+
+          <button
+            type="submit"
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#28a745",
+              color: "white",
+              border: "none",
+              borderRadius: 4,
+            }}
+          >
             Добавить
           </button>
         </form>
@@ -143,8 +179,12 @@ export default function Clients() {
 
       {/* Форма редактирования */}
       {editingClient && (
-        <form onSubmit={handleEditClient} style={{ marginBottom: 20, padding: 20, border: "1px solid #ccc", borderRadius: 8 }}>
+        <form
+          onSubmit={handleEditClient}
+          style={{ marginBottom: 20, padding: 20, border: "1px solid #ccc", borderRadius: 8 }}
+        >
           <h3>Редактировать клиента</h3>
+
           <div style={{ marginBottom: 10 }}>
             <label>ФИО:</label>
             <input
@@ -155,6 +195,7 @@ export default function Clients() {
               style={{ marginLeft: 10, padding: 5, width: 250 }}
             />
           </div>
+
           <div style={{ marginBottom: 10 }}>
             <label>Телефон:</label>
             <input
@@ -165,10 +206,41 @@ export default function Clients() {
               style={{ marginLeft: 10, padding: 5, width: 250 }}
             />
           </div>
-          <button type="submit" style={{ padding: "10px 20px", backgroundColor: "#ffc107", color: "black", border: "none", borderRadius: 4, marginRight: 10 }}>
+
+          <div style={{ marginBottom: 10 }}>
+            <label>Пароль:</label>
+            <input
+              type="password"
+              value={newClient.password}
+              onChange={(e) => setNewClient({ ...newClient, password: e.target.value })}
+              style={{ marginLeft: 10, padding: 5, width: 250 }}
+            />
+          </div>
+
+          <button
+            type="submit"
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#ffc107",
+              color: "black",
+              border: "none",
+              borderRadius: 4,
+              marginRight: 10,
+            }}
+          >
             Сохранить
           </button>
-          <button type="button" onClick={cancelEdit} style={{ padding: "10px 20px", backgroundColor: "#6c757d", color: "white", border: "none", borderRadius: 4 }}>
+          <button
+            type="button"
+            onClick={cancelEdit}
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#6c757d",
+              color: "white",
+              border: "none",
+              borderRadius: 4,
+            }}
+          >
             Отмена
           </button>
         </form>
@@ -194,13 +266,26 @@ export default function Clients() {
                 <td>
                   <button
                     onClick={() => startEdit(c)}
-                    style={{ padding: "5px 10px", backgroundColor: "#ffc107", color: "black", border: "none", borderRadius: 4, marginRight: 5 }}
+                    style={{
+                      padding: "5px 10px",
+                      backgroundColor: "#ffc107",
+                      color: "black",
+                      border: "none",
+                      borderRadius: 4,
+                      marginRight: 5,
+                    }}
                   >
                     Редактировать
                   </button>
                   <button
                     onClick={() => handleDeleteClient(c.id)}
-                    style={{ padding: "5px 10px", backgroundColor: "#dc3545", color: "white", border: "none", borderRadius: 4 }}
+                    style={{
+                      padding: "5px 10px",
+                      backgroundColor: "#dc3545",
+                      color: "white",
+                      border: "none",
+                      borderRadius: 4,
+                    }}
                   >
                     Удалить
                   </button>

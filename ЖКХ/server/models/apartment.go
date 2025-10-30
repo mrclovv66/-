@@ -2,8 +2,8 @@ package models
 
 // Квартира
 type Apartment struct {
-	Address  string  `json:"address"`
-	ClientID int     `json:"client_id"`
-	Rooms    int     `json:"rooms"`
-	Area     float64 `json:"area"`
+	Address  string `json:"address"`
+	ClientID int    `json:"client_id"`
+	Rooms    int    `json:"rooms"`
+	Area     int    `json:"area"`
 }
