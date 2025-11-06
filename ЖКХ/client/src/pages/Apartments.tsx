@@ -59,8 +59,8 @@ export default function Apartments() {
   };
 
   const handleAdd = async () => {
-    if (!form.address || !form.client_id) {
-      alert("Укажите адрес и владельца!");
+    if (!form.address) {
+      alert("Укажите адрес!");
       return;
     }
     try {
@@ -88,17 +88,6 @@ export default function Apartments() {
     } catch (err) {
       console.error(err);
       alert("Ошибка при обновлении квартиры");
-    }
-  };
-
-  const handleDelete = async (address: string) => {
-    if (!window.confirm("Удалить квартиру?")) return;
-    try {
-      await api.delete(`/apartments/${encodeURIComponent(address)}`);
-      loadApartments();
-    } catch (err) {
-      console.error(err);
-      alert("Ошибка при удалении квартиры");
     }
   };
 
@@ -204,7 +193,6 @@ export default function Apartments() {
                 <button onClick={() => handleEdit(a)} style={{ marginRight: "8px" }}>
                   ✏️
                 </button>
-                <button onClick={() => handleDelete(a.address)}>🗑️</button>
               </td>
             </tr>
           ))}

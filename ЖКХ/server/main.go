@@ -47,13 +47,13 @@ func RegisterRoutes(r *gin.Engine) {
 		api.GET("/clients", middleware.RequireAuth(), func(c *gin.Context) { handlers.GetClients(c, db) })
 		api.POST("/clients", middleware.RequireAuth(), func(c *gin.Context) { handlers.CreateClient(c, db) })
 		api.PUT("/clients/:id", middleware.RequireAuth(), func(c *gin.Context) { handlers.UpdateClient(c, db) })
-		api.DELETE("/clients/:id", middleware.RequireAuth(), func(c *gin.Context) { handlers.DeleteClient(c, db) })
+		api.PUT("/clients/:id/archive", middleware.RequireAuth(), func(c *gin.Context) { handlers.ArchiveClient(c, db) })
+		api.PUT("/clients/:id/restore", middleware.RequireAuth(), func(c *gin.Context) { handlers.RestoreClient(c, db) })
 
 		// Apartments
 		api.GET("/apartments", middleware.RequireAuth(), func(c *gin.Context) { handlers.GetApartments(c, db) })
 		api.POST("/apartments", middleware.RequireAuth(), func(c *gin.Context) { handlers.CreateApartment(c, db) })
 		api.PUT("/apartments/:id", middleware.RequireAuth(), func(c *gin.Context) { handlers.UpdateApartment(c, db) })
-		api.DELETE("/apartments/:id", middleware.RequireAuth(), func(c *gin.Context) { handlers.DeleteApartment(c, db) })
 
 		// Meters
 		api.GET("/meters", middleware.RequireAuth(), func(c *gin.Context) { handlers.GetMeters(c, db) })

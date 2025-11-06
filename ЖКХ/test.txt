@@ -1,0 +1,59 @@
+use TEST
+
+--drop table SotrC
+--go
+
+--CREATE TABLE SotrC (
+--    ID INT IDENTITY(1,1) PRIMARY KEY,
+--    Fio NVARCHAR(50),
+--    Salary MONEY,
+--    Dep INT
+--);
+
+--INSERT INTO SotrC (Fio, Salary, Dep) VALUES
+--(N'Иванов Иван Иванович', 9500, 1),
+--(N'Петров Пётр Петрович', 12000, 2),
+--(N'Сидорова Анна Викторовна', 8700, 1),
+--(N'Кузнецов Андрей Сергеевич', 15000, 3),
+--(N'Соколова Мария Александровна', 11200, 2),
+--(N'Морозов Алексей Павлович', 7600, 1),
+--(N'Васильева Елена Олеговна', 9800, 3),
+--(N'Федоров Никита Ильич', 13100, 2),
+--(N'Ковалев Артём Дмитриевич', 8900, 1),
+--(N'Егорова Дарья Сергеевна', 10400, 3);
+
+--static - снимок таблиц(только для чтения, новые записи не видит)
+--keyset - тоже снимок, но не целой таблицы, а только её ключей(с данными можно работать: удалять/редактировать) 
+--dynamic - динамический курсор может все
+--fast-forward - самый быстрый, можно идти ток вперед и ток читать
+--local/global - ну это понятно локальный существует ток внутри "блока", глобальный существует
+--scroll/forward_only - 1 вариант курсор двигается как угодной, 2 вариант курсор двигается ток от первой строки к последней то есть в одну сторону
+--блокировка: optimistic - нет блокировки, а scroll_locks - блокировка строки при её чтении курсором, 
+select *
+from SotrC 
+
+declare Sotr_curr cursor local forward_only keyset scroll_locks for 
+select ID, Fio, Salary
+from SotrC
+for update of Salary
+
+open Sotr_curr
+
+declare @id int, @fio NVARCHAR(50), @sal MONEY
+
+fetch next from Sotr_curr into @id, @fio, @sal
+while @@FETCH_STATUS = 0 
+begin
+	if @sal < 10000
+		begin 
+			update SotrC
+			set Salary = @sal + 10000
+			where current of Sotr_curr
+		end
+	PRINT @fio + N' — ' + CAST(@sal AS NVARCHAR(20))
+	fetch next from SotrC into @id, @fio, @sal
+end
+close Sotr_curr
+deallocate Sotr_curr
+
+
