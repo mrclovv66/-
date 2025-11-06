@@ -27,14 +27,11 @@ func GetRequests(c *gin.Context, db *sql.DB) {
 	clientID, _ := c.Get("client_id")
 	search := strings.TrimSpace(c.Query("search"))
 
-	var (
-		rows *sql.Rows
-		err  error
-	)
+	var rows *sql.Rows
+	var err error
 
 	switch role {
 	case "client":
-		// 🔹 Клиент: только свои заявки, без поиска
 		rows, err = db.Query(`
 			SELECT 
 				z.[ID_заявки],
@@ -47,13 +44,12 @@ func GetRequests(c *gin.Context, db *sql.DB) {
 				z.[Статус]
 			FROM [Заявки] z
 			JOIN [Клиент] k ON z.[ID_клиента] = k.[Id_клиента]
-			WHERE z.[ID_клиента]=@p1
+			WHERE z.[ID_клиента] = @p1
 			ORDER BY z.[Дата_создания] DESC
 		`, clientID)
 
-	default: // employee/admin
+	default:
 		if search == "" {
-			// 🔹 Без поиска — возвращаем все заявки
 			rows, err = db.Query(`
 				SELECT 
 					z.[ID_заявки],
@@ -69,10 +65,8 @@ func GetRequests(c *gin.Context, db *sql.DB) {
 				ORDER BY z.[Дата_создания] DESC
 			`)
 		} else {
-			// 🔹 Поиск — вызываем табличную функцию напрямую
-			rows, err = db.Query(`
-				SELECT * FROM dbo.SearchRequests(@p1)
-			`, search)
+			// Поиск — через T-SQL функцию
+			rows, err = db.Query(`SELECT * FROM dbo.SearchRequests(@p1)`, search)
 		}
 	}
 
@@ -84,10 +78,8 @@ func GetRequests(c *gin.Context, db *sql.DB) {
 
 	var requests []Request
 	for rows.Next() {
-		var (
-			r       Request
-			rawDate sql.NullTime
-		)
+		var r Request
+		var rawDate sql.NullTime
 		if err := rows.Scan(
 			&r.ID, &r.ClientID, &r.FullName, &r.Address,
 			&r.RequestType, &r.Description, &rawDate, &r.Status,

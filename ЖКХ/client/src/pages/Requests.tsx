@@ -27,13 +27,7 @@ export default function Requests() {
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [searchTerm, setSearchTerm] = useState(""); // 🔹 новое состояние для поиска
-
-  // === загрузка данных ===
-  useEffect(() => {
-    loadRequests();
-    if (role === "client") loadApartments();
-  }, [role]);
+  const [searchTerm, setSearchTerm] = useState(""); // 🔍 поиск
 
   // === загрузка заявок ===
   const loadRequests = async () => {
@@ -50,6 +44,22 @@ export default function Requests() {
       setLoading(false);
     }
   };
+
+  // === первичная загрузка ===
+  useEffect(() => {
+    loadRequests();
+    if (role === "client") loadApartments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role]);
+
+  // === debounce-поиск (только для employee/admin) ===
+  useEffect(() => {
+    if (role === "employee" || role === "admin") {
+      const delay = setTimeout(loadRequests, 300);
+      return () => clearTimeout(delay);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
 
   // === загрузка квартир (для клиента) ===
   const loadApartments = async () => {
@@ -84,7 +94,7 @@ export default function Requests() {
     }
   };
 
-  // === обновление статуса заявки (для сотрудника) ===
+  // === обновление статуса заявки ===
   const updateStatus = async (id: number, status: string) => {
     try {
       await api.put(`/requests/${id}/status`, { status });
@@ -94,7 +104,7 @@ export default function Requests() {
     }
   };
 
-  // === удаление заявки (для сотрудника) ===
+  // === удаление заявки ===
   const deleteRequest = async (id: number) => {
     if (!window.confirm(`Удалить заявку №${id}?`)) return;
     try {
@@ -167,34 +177,24 @@ export default function Requests() {
 
       {error && <p style={{ color: "red" }}>{error}</p>}
 
-      {/* === Форма поиска (для всех ролей) === */}
-      {(role === "employee" || role === "admin") && (<div style={{ marginBottom: 20 }}>
-        <input
-          type="text"
-          placeholder="Поиск по ФИО, адресу, описанию, типу или статусу..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{
-            padding: "6px 10px",
-            width: "300px",
-            marginRight: 8,
-            borderRadius: 4,
-            border: "1px solid #ccc",
-          }}
-        />
-        <button
-          onClick={loadRequests}
-          style={{
-            padding: "6px 12px",
-            backgroundColor: "#007bff",
-            color: "white",
-            border: "none",
-            borderRadius: 4,
-          }}
-        >
-          Найти
-        </button>
-      </div>)}
+      {/* === Поиск (только для сотрудника и админа) === */}
+      {(role === "employee" || role === "admin") && (
+        <div style={{ marginBottom: 20 }}>
+          <input
+            type="text"
+            placeholder="Поиск по ФИО, адресу, типу или статусу..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              padding: "6px 10px",
+              width: "320px",
+              marginRight: 8,
+              borderRadius: 4,
+              border: "1px solid #ccc",
+            }}
+          />
+        </div>
+      )}
 
       {/* === Клиент: форма подачи заявки === */}
       {role === "client" && (
