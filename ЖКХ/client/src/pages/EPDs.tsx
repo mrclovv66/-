@@ -32,6 +32,7 @@ export default function EPDs() {
     billingMonth: "",
   });
 
+  // === Получение данных ===
   const loadEPDs = (term: string = "") => {
     api.get(`/epds?search=${term}`).then((res) => setEpds(res.data));
   };
@@ -47,6 +48,7 @@ export default function EPDs() {
     return () => clearTimeout(delay);
   }, [search]);
 
+  // === Обработка формы ===
   const toggleForm = () => setShowForm((prev) => !prev);
 
   const toggleService = (name: string) => {
@@ -79,6 +81,19 @@ export default function EPDs() {
       .catch((err) => alert(err.response?.data?.error || err.message));
   };
 
+  // === Удаление ЕПД ===
+  const handleDelete = async (docNumber: string) => {
+    if (!window.confirm("Вы уверены, что хотите удалить этот ЕПД?")) return;
+
+    await api
+      .delete(`/epds/${docNumber}`)
+      .then(() => {
+        alert("ЕПД успешно удалён");
+        loadEPDs();
+      })
+      .catch((err) => alert(err.response?.data?.error || err.message));
+  };
+
   return (
     <div style={{ backgroundColor: "#f5f6fa", minHeight: "100vh" }}>
       <NavBar />
@@ -87,7 +102,7 @@ export default function EPDs() {
           Единые платёжные документы (ЕПД)
         </h2>
 
-        {/* Поиск */}
+        {/* === Поиск + кнопка Добавить === */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: "20px" }}>
           <input
             type="text"
@@ -117,7 +132,7 @@ export default function EPDs() {
           </button>
         </div>
 
-        {/* ===== Форма ===== */}
+        {/* === Форма добавления === */}
         {showForm && (
           <form
             onSubmit={handleSubmit}
@@ -181,7 +196,7 @@ export default function EPDs() {
               />
             </div>
 
-            {/* ===== Услуги ===== */}
+            {/* === Услуги === */}
             <div>
               <h4 style={{ marginBottom: "10px" }}>Выберите услуги:</h4>
               <div
@@ -226,7 +241,6 @@ export default function EPDs() {
               </div>
             </div>
 
-            {/* ===== Кнопка ===== */}
             <button
               type="submit"
               style={{
@@ -244,7 +258,7 @@ export default function EPDs() {
           </form>
         )}
 
-        {/* ===== Таблица ===== */}
+        {/* === Таблица ЕПД === */}
         <table
           border={1}
           cellPadding={6}
@@ -262,6 +276,7 @@ export default function EPDs() {
               <th>Адрес</th>
               <th>Месяц</th>
               <th>Сумма</th>
+              <th>Действия</th>
             </tr>
           </thead>
           <tbody>
@@ -271,6 +286,21 @@ export default function EPDs() {
                 <td>{e.address}</td>
                 <td>{e.billingMonth}</td>
                 <td>{e.totalAmount} ₽</td>
+                <td>
+                  <button
+                    onClick={() => handleDelete(e.docNumber)}
+                    style={{
+                      backgroundColor: "#dc3545",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "6px",
+                      padding: "6px 10px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Удалить
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

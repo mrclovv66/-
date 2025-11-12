@@ -168,11 +168,12 @@ func UpdateEPD(c *gin.Context, db *sql.DB) {
 func DeleteEPD(c *gin.Context, db *sql.DB) {
 	docNumber := c.Param("id")
 
-	_, err := db.Exec("DELETE FROM ЕПД WHERE Номер_документа=@p1", docNumber)
+	// Вызов процедуры
+	_, err := db.Exec(`EXEC dbo.DeleteEPDCascade @p1`, docNumber)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "EPD deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": "ЕПД успешно удалён"})
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// ====== Получение всех квартир с владельцами ======
 func GetApartments(c *gin.Context, db *sql.DB) {
 	rows, err := db.Query(`
 		SELECT 
@@ -49,10 +50,7 @@ func GetApartments(c *gin.Context, db *sql.DB) {
 		if client.Valid {
 			val := int(client.Int32)
 			a.ClientID = &val
-		} else {
-			a.ClientID = nil
 		}
-
 		if owner.Valid {
 			a.OwnerName = owner.String
 		} else {
@@ -65,6 +63,7 @@ func GetApartments(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, apartments)
 }
 
+// ====== Добавление ======
 func CreateApartment(c *gin.Context, db *sql.DB) {
 	var a models.Apartment
 	if err := c.BindJSON(&a); err != nil {
@@ -86,6 +85,7 @@ func CreateApartment(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusCreated, gin.H{"message": "Apartment created"})
 }
 
+// ====== Обновление (только владелец) ======
 func UpdateApartment(c *gin.Context, db *sql.DB) {
 	address := c.Param("id")
 	var a models.Apartment
@@ -97,15 +97,14 @@ func UpdateApartment(c *gin.Context, db *sql.DB) {
 
 	_, err := db.Exec(
 		`UPDATE Квартира 
-		 SET Id_владельца = @p1, Количество_комнат = @p2, Площадь = @p3 
-		 WHERE Адрес = @p4`,
-		a.ClientID, a.Rooms, a.Area, address,
+		 SET Id_владельца = @p1 
+		 WHERE Адрес = @p2`,
+		a.ClientID, address,
 	)
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Apartment updated"})
+	c.JSON(http.StatusOK, gin.H{"message": "Apartment owner updated"})
 }

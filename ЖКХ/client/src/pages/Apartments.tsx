@@ -58,6 +58,7 @@ export default function Apartments() {
     }));
   };
 
+  // === Добавление ===
   const handleAdd = async () => {
     if (!form.address) {
       alert("Укажите адрес!");
@@ -73,6 +74,7 @@ export default function Apartments() {
     }
   };
 
+  // === Редактирование ===
   const handleEdit = (a: Apartment) => {
     setForm(a);
     setEditing(a.address);
@@ -115,7 +117,7 @@ export default function Apartments() {
             name="address"
             value={form.address}
             onChange={handleChange}
-            disabled={!!editing}
+            disabled={!!editing} // при редактировании нельзя менять адрес
             style={{ width: "100%" }}
           />
         </div>
@@ -145,6 +147,7 @@ export default function Apartments() {
             onChange={handleChange}
             type="number"
             style={{ width: "100%" }}
+            disabled={!!editing} // 🔹 нельзя менять при редактировании
           />
         </div>
 
@@ -156,6 +159,7 @@ export default function Apartments() {
             onChange={handleChange}
             type="number"
             style={{ width: "100%" }}
+            disabled={!!editing} // 🔹 нельзя менять при редактировании
           />
         </div>
 
@@ -190,9 +194,7 @@ export default function Apartments() {
               <td>{a.rooms}</td>
               <td>{a.area}</td>
               <td>
-                <button onClick={() => handleEdit(a)} style={{ marginRight: "8px" }}>
-                  ✏️
-                </button>
+                <button onClick={() => handleEdit(a)}>✏️ Редактировать</button>
               </td>
             </tr>
           ))}
