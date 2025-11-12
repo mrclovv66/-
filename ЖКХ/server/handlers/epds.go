@@ -10,7 +10,38 @@ import (
 )
 
 func GetEPDs(c *gin.Context, db *sql.DB) {
-	rows, err := db.Query("SELECT Номер_документа, Адрес, Расчётный_месяц, Сумма FROM ЕПД")
+	search := c.Query("search") // то, что вводит пользователь
+	var rows *sql.Rows
+	var err error
+
+	// Если есть строка поиска — добавляем WHERE с LIKE по номеру, адресу и месяцу
+	if search != "" {
+		query := `
+			SELECT 
+				Номер_документа, 
+				Адрес, 
+				FORMAT(Расчётный_месяц, 'yyyy-MM') AS Расчётный_месяц, 
+				Сумма
+			FROM ЕПД
+			WHERE 
+				Номер_документа LIKE '%' + @p1 + '%' OR
+				Адрес LIKE '%' + @p1 + '%' OR
+				FORMAT(Расчётный_месяц, 'yyyy-MM') LIKE '%' + @p1 + '%'
+			ORDER BY Расчётный_месяц DESC
+		`
+		rows, err = db.Query(query, search)
+	} else {
+		rows, err = db.Query(`
+			SELECT 
+				Номер_документа, 
+				Адрес, 
+				FORMAT(Расчётный_месяц, 'yyyy-MM') AS Расчётный_месяц, 
+				Сумма
+			FROM ЕПД
+			ORDER BY Расчётный_месяц DESC
+		`)
+	}
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -20,7 +51,10 @@ func GetEPDs(c *gin.Context, db *sql.DB) {
 	var epds []models.EPD
 	for rows.Next() {
 		var e models.EPD
-		rows.Scan(&e.DocNumber, &e.Address, &e.BillingMonth, &e.TotalAmount)
+		if err := rows.Scan(&e.DocNumber, &e.Address, &e.BillingMonth, &e.TotalAmount); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 		epds = append(epds, e)
 	}
 
