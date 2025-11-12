@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 
 	"server/models"
@@ -62,20 +63,88 @@ func GetEPDs(c *gin.Context, db *sql.DB) {
 }
 
 func CreateEPD(c *gin.Context, db *sql.DB) {
-	var e models.EPD
-	if err := c.BindJSON(&e); err != nil {
+	type RequestData struct {
+		DocNumber    string   `json:"docNumber"`
+		Address      string   `json:"address"`
+		BillingMonth string   `json:"billingMonth"`
+		Services     []string `json:"services"`
+	}
+
+	var data RequestData
+	if err := c.BindJSON(&data); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	_, err := db.Exec("INSERT INTO ЕПД (Номер_документа, Адрес, Расчётный_месяц, Сумма) VALUES (@p1, @p2, @p3, @p4)",
-		e.DocNumber, e.Address, e.BillingMonth, e.TotalAmount)
+	if len(data.Services) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No services selected"})
+		return
+	}
+
+	// 1️⃣ Формируем SQL для выборки услуг динамически
+	placeholders := ""
+	for i := range data.Services {
+		if i > 0 {
+			placeholders += ", "
+		}
+		placeholders += fmt.Sprintf("@p%d", i+1)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT Наименование, Стоимость 
+		FROM Услуга 
+		WHERE Наименование IN (%s)
+	`, placeholders)
+
+	args := make([]any, len(data.Services))
+	for i, s := range data.Services {
+		args[i] = s
+	}
+
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	total := 0
+	servicePrices := map[string]int{}
+	for rows.Next() {
+		var name string
+		var price int
+		if err := rows.Scan(&name, &price); err == nil {
+			total += price
+			servicePrices[name] = price
+		}
+	}
+
+	// 2️⃣ Добавляем ЕПД
+	_, err = db.Exec(`
+		INSERT INTO ЕПД (Номер_документа, Адрес, Расчётный_месяц, Сумма)
+		VALUES (@p1, @p2, @p3, @p4)
+	`, data.DocNumber, data.Address, data.BillingMonth, total)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "EPD created"})
+	// 3️⃣ Добавляем данные об услугах
+	for name, price := range servicePrices {
+		_, err := db.Exec(`
+			INSERT INTO Данные_об_услуге (Наименование_услуги, Номер_ЕПД, Сумма)
+			VALUES (@p1, @p2, @p3)
+		`, name, data.DocNumber, price)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":     "EPD created successfully",
+		"totalAmount": total,
+	})
 }
 
 func UpdateEPD(c *gin.Context, db *sql.DB) {
