@@ -65,7 +65,8 @@ func RegisterRoutes(r *gin.Engine) {
 		api.GET("/services", middleware.RequireAuth(), func(c *gin.Context) { handlers.GetServices(c, db) })
 		api.POST("/services", middleware.RequireAuth(), func(c *gin.Context) { handlers.CreateService(c, db) })
 		api.PUT("/services/:id", middleware.RequireAuth(), func(c *gin.Context) { handlers.UpdateService(c, db) })
-		api.DELETE("/services/:id", middleware.RequireAuth(), func(c *gin.Context) { handlers.DeleteService(c, db) })
+		api.PUT("/services/:id/archive", middleware.RequireAuth(), func(c *gin.Context) { handlers.ArchiveService(c, db) })
+		api.PUT("/services/:id/restore", middleware.RequireAuth(), func(c *gin.Context) { handlers.RestoreService(c, db) })
 
 		// EPDs
 		api.GET("/epds", middleware.RequireAuth(), func(c *gin.Context) { handlers.GetEPDs(c, db) })

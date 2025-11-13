@@ -3,14 +3,14 @@ package handlers
 import (
 	"database/sql"
 	"net/http"
-
 	"server/models"
 
 	"github.com/gin-gonic/gin"
 )
 
+// === Получить все услуги ===
 func GetServices(c *gin.Context, db *sql.DB) {
-	rows, err := db.Query("SELECT Наименование, Категория, Стоимость FROM Услуга")
+	rows, err := db.Query("SELECT Наименование, Категория, Стоимость, Статус FROM Услуга")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -20,13 +20,14 @@ func GetServices(c *gin.Context, db *sql.DB) {
 	var services []models.Service
 	for rows.Next() {
 		var s models.Service
-		rows.Scan(&s.Name, &s.Category, &s.Price)
+		rows.Scan(&s.Name, &s.Category, &s.Price, &s.Status)
 		services = append(services, s)
 	}
 
 	c.JSON(http.StatusOK, services)
 }
 
+// === Добавить услугу ===
 func CreateService(c *gin.Context, db *sql.DB) {
 	var s models.Service
 	if err := c.BindJSON(&s); err != nil {
@@ -34,7 +35,8 @@ func CreateService(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	_, err := db.Exec("INSERT INTO Услуга (Наименование, Категория, Стоимость) VALUES (@p1, @p2, @p3)",
+	_, err := db.Exec(`INSERT INTO Услуга (Наименование, Категория, Стоимость, Статус)
+					   VALUES (@p1, @p2, @p3, 'active')`,
 		s.Name, s.Category, s.Price)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -44,6 +46,7 @@ func CreateService(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusCreated, gin.H{"message": "Service created"})
 }
 
+// === Обновить услугу ===
 func UpdateService(c *gin.Context, db *sql.DB) {
 	name := c.Param("id")
 	var s models.Service
@@ -52,7 +55,7 @@ func UpdateService(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	_, err := db.Exec("UPDATE Услуга SET Категория=@p1, Стоимость=@p2 WHERE Наименование=@p3",
+	_, err := db.Exec(`UPDATE Услуга SET Категория=@p1, Стоимость=@p2 WHERE Наименование=@p3`,
 		s.Category, s.Price, name)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -62,14 +65,28 @@ func UpdateService(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, gin.H{"message": "Service updated"})
 }
 
-func DeleteService(c *gin.Context, db *sql.DB) {
+// === Архивировать услугу (вместо DELETE) ===
+func ArchiveService(c *gin.Context, db *sql.DB) {
 	name := c.Param("id")
 
-	_, err := db.Exec("DELETE FROM Услуга WHERE Наименование=@p1", name)
+	_, err := db.Exec(`UPDATE Услуга SET Статус='archive' WHERE Наименование=@p1`, name)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Service deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": "Service archived"})
+}
+
+// === Восстановить услугу из архива ===
+func RestoreService(c *gin.Context, db *sql.DB) {
+	name := c.Param("id")
+
+	_, err := db.Exec(`UPDATE Услуга SET Статус='active' WHERE Наименование=@p1`, name)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Service restored"})
 }
