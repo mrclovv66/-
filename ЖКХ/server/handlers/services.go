@@ -27,6 +27,28 @@ func GetServices(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, services)
 }
 
+func GetActiveServices(c *gin.Context, db *sql.DB) {
+	rows, err := db.Query(`
+        SELECT Наименование, Категория, Стоимость, Статус 
+        FROM Услуга 
+        WHERE Статус = 'active'
+    `)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var services []models.Service
+	for rows.Next() {
+		var s models.Service
+		rows.Scan(&s.Name, &s.Category, &s.Price, &s.Status)
+		services = append(services, s)
+	}
+
+	c.JSON(http.StatusOK, services)
+}
+
 // === Добавить услугу ===
 func CreateService(c *gin.Context, db *sql.DB) {
 	var s models.Service

@@ -40,7 +40,7 @@ export default function EPDs() {
   useEffect(() => {
     loadEPDs();
     api.get("/apartments").then((res) => setAddresses(res.data));
-    api.get("/services").then((res) => setServices(res.data));
+    api.get("/services/active").then((res) => setServices(res.data));
   }, []);
 
   useEffect(() => {
