@@ -6,4 +6,5 @@ type EPD struct {
 	Address      string  `json:"address"`
 	BillingMonth string  `json:"billingMonth"`
 	TotalAmount  float64 `json:"totalAmount"`
+	Paid         bool    `json:"paid"`
 }

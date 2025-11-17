@@ -1,9 +1,8 @@
 package models
 
-// Задолженности
 type Debt struct {
-	ID      int     `json:"id"`
-	Address string  `json:"address"`
-	Amount  float64 `json:"amount"`
-	DueDate string  `json:"dueDate"`
+	ID       int    `json:"id"`       // Номер
+	Address  string `json:"address"`  // Адрес
+	Amount   int    `json:"amount"`   // Сумма
+	Deadline string `json:"deadline"` // Срок выплаты
 }

@@ -7,6 +7,7 @@ type EPD = {
   address: string;
   billingMonth: string;
   totalAmount: number;
+  paid: boolean;
 };
 
 type Service = {
@@ -26,6 +27,7 @@ export default function EPDs() {
   const [addresses, setAddresses] = useState<Apartment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
+
   const [form, setForm] = useState({
     docNumber: "",
     address: "",
@@ -43,12 +45,12 @@ export default function EPDs() {
     api.get("/services/active").then((res) => setServices(res.data));
   }, []);
 
+  // Поиск с задержкой
   useEffect(() => {
     const delay = setTimeout(() => loadEPDs(search), 300);
     return () => clearTimeout(delay);
   }, [search]);
 
-  // === Обработка формы ===
   const toggleForm = () => setShowForm((prev) => !prev);
 
   const toggleService = (name: string) => {
@@ -57,6 +59,7 @@ export default function EPDs() {
     );
   };
 
+  // === Создание ЕПД ===
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.docNumber || !form.address || !form.billingMonth || selectedServices.length === 0) {
@@ -76,6 +79,19 @@ export default function EPDs() {
         setShowForm(false);
         setSelectedServices([]);
         setForm({ docNumber: "", address: "", billingMonth: "" });
+        loadEPDs();
+      })
+      .catch((err) => alert(err.response?.data?.error || err.message));
+  };
+
+  // === Оплата ЕПД ===
+  const handlePay = async (docNumber: string) => {
+    if (!window.confirm("Отметить этот ЕПД как оплаченный?")) return;
+
+    await api
+      .put(`/epds/${docNumber}/pay`)
+      .then(() => {
+        alert("ЕПД отмечен как оплаченный!");
         loadEPDs();
       })
       .catch((err) => alert(err.response?.data?.error || err.message));
@@ -148,57 +164,51 @@ export default function EPDs() {
               gap: "15px",
             }}
           >
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <label>Номер ЕПД:</label>
-              <input
-                type="text"
-                value={form.docNumber}
-                onChange={(e) => setForm({ ...form, docNumber: e.target.value })}
-                style={{
-                  padding: "8px",
-                  borderRadius: "6px",
-                  border: "1px solid #ccc",
-                }}
-              />
-            </div>
+            <label>Номер ЕПД:</label>
+            <input
+              type="text"
+              value={form.docNumber}
+              onChange={(e) => setForm({ ...form, docNumber: e.target.value })}
+              style={{
+                padding: "8px",
+                borderRadius: "6px",
+                border: "1px solid #ccc",
+              }}
+            />
 
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <label>Адрес:</label>
-              <select
-                value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
-                style={{
-                  padding: "8px",
-                  borderRadius: "6px",
-                  border: "1px solid #ccc",
-                }}
-              >
-                <option value="">Выберите адрес</option>
-                {addresses.map((a, i) => (
-                  <option key={i} value={a.address}>
-                    {a.address}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <label>Адрес:</label>
+            <select
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              style={{
+                padding: "8px",
+                borderRadius: "6px",
+                border: "1px solid #ccc",
+              }}
+            >
+              <option value="">Выберите адрес</option>
+              {addresses.map((a, i) => (
+                <option key={i} value={a.address}>
+                  {a.address}
+                </option>
+              ))}
+            </select>
 
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <label>Расчётный месяц:</label>
-              <input
-                type="month"
-                value={form.billingMonth.replace("-01", "")}
-                onChange={(e) => setForm({ ...form, billingMonth: e.target.value + "-01" })}
-                style={{
-                  padding: "8px",
-                  borderRadius: "6px",
-                  border: "1px solid #ccc",
-                }}
-              />
-            </div>
+            <label>Расчётный месяц:</label>
+            <input
+              type="month"
+              value={form.billingMonth.replace("-01", "")}
+              onChange={(e) => setForm({ ...form, billingMonth: e.target.value + "-01" })}
+              style={{
+                padding: "8px",
+                borderRadius: "6px",
+                border: "1px solid #ccc",
+              }}
+            />
 
             {/* === Услуги === */}
             <div>
-              <h4 style={{ marginBottom: "10px" }}>Выберите услуги:</h4>
+              <h4>Выберите услуги:</h4>
               <div
                 style={{
                   display: "grid",
@@ -207,37 +217,27 @@ export default function EPDs() {
                   maxHeight: "220px",
                   overflowY: "auto",
                   paddingRight: "6px",
-                  alignItems: "center",
-                  justifyItems: "start",
                 }}
               >
-                {services
-                  .filter(
-                    (s) =>
-                      s.name !== "Горячее водоснабжение" &&
-                      s.name !== "Холодное водоснабжение"
-                  )
-                  .map((s) => (
-                    <label
-                      key={s.name}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        cursor: "pointer",
-                        whiteSpace: "nowrap",
-                        textAlign: "left",
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedServices.includes(s.name)}
-                        onChange={() => toggleService(s.name)}
-                        style={{ margin: 0 }}
-                      />
-                      <span>{s.name}</span>
-                    </label>
-                  ))}
+                {services.map((s) => (
+                  <label
+                    key={s.name}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedServices.includes(s.name)}
+                      onChange={() => toggleService(s.name)}
+                    />
+                    <span>{s.name}</span>
+                  </label>
+                ))}
               </div>
             </div>
 
@@ -276,17 +276,39 @@ export default function EPDs() {
               <th>Адрес</th>
               <th>Месяц</th>
               <th>Сумма</th>
+              <th>Статус</th>
               <th>Действия</th>
             </tr>
           </thead>
+
           <tbody>
-            {epds?.map((e, index) => (
-              <tr key={index} style={{ textAlign: "center" }}>
+            {epds.map((e, i) => (
+              <tr key={i} style={{ textAlign: "center" }}>
                 <td>{e.docNumber}</td>
                 <td>{e.address}</td>
                 <td>{e.billingMonth}</td>
                 <td>{e.totalAmount} ₽</td>
-                <td>
+                <td style={{ fontWeight: "bold" }}>
+                  {e.paid ? "Оплачено" : "Не оплачено"}
+                </td>
+
+                <td style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                  {!e.paid && (
+                    <button
+                      onClick={() => handlePay(e.docNumber)}
+                      style={{
+                        backgroundColor: "#28a745",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "6px",
+                        padding: "6px 10px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Оплатить
+                    </button>
+                  )}
+
                   <button
                     onClick={() => handleDelete(e.docNumber)}
                     style={{

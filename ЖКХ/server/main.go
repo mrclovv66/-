@@ -60,6 +60,7 @@ func RegisterRoutes(r *gin.Engine) {
 		api.POST("/meters", middleware.RequireAuth(), func(c *gin.Context) { handlers.CreateMeter(c, db) })
 		api.PUT("/meters/:id", middleware.RequireAuth(), func(c *gin.Context) { handlers.UpdateMeter(c, db) })
 		api.DELETE("/meters/:id", middleware.RequireAuth(), func(c *gin.Context) { handlers.DeleteMeter(c, db) })
+		api.GET("/meters/addresses", middleware.RequireAuth(), func(c *gin.Context) { handlers.GetMeterAddresses(c, db) })
 
 		// Services
 		api.GET("/services", middleware.RequireAuth(), func(c *gin.Context) { handlers.GetServices(c, db) })
@@ -72,14 +73,15 @@ func RegisterRoutes(r *gin.Engine) {
 		// EPDs
 		api.GET("/epds", middleware.RequireAuth(), func(c *gin.Context) { handlers.GetEPDs(c, db) })
 		api.POST("/epds", middleware.RequireAuth(), func(c *gin.Context) { handlers.CreateEPD(c, db) })
-		api.PUT("/epds/:id", middleware.RequireAuth(), func(c *gin.Context) { handlers.UpdateEPD(c, db) })
+		// api.PUT("/epds/:id", middleware.RequireAuth(), func(c *gin.Context) { handlers.UpdateEPD(c, db) })
 		api.DELETE("/epds/:id", middleware.RequireAuth(), func(c *gin.Context) { handlers.DeleteEPD(c, db) })
+		api.PUT("/epds/:id/pay", middleware.RequireAuth(), func(c *gin.Context) { handlers.PayEPD(c, db) })
 
 		// Debts
 		api.GET("/debts", middleware.RequireAuth(), func(c *gin.Context) { handlers.GetDebts(c, db) })
-		api.POST("/debts", middleware.RequireAuth(), func(c *gin.Context) { handlers.CreateDebt(c, db) })
-		api.PUT("/debts/:id", middleware.RequireAuth(), func(c *gin.Context) { handlers.UpdateDebt(c, db) })
-		api.DELETE("/debts/:id", middleware.RequireAuth(), func(c *gin.Context) { handlers.DeleteDebt(c, db) })
+		// api.POST("/debts", middleware.RequireAuth(), func(c *gin.Context) { handlers.CreateDebt(c, db) })
+		// api.PUT("/debts/:id", middleware.RequireAuth(), func(c *gin.Context) { handlers.UpdateDebt(c, db) })
+		// api.DELETE("/debts/:id", middleware.RequireAuth(), func(c *gin.Context) { handlers.DeleteDebt(c, db) })
 
 		// Requests
 		api.GET("/requests", middleware.RequireAuth(), func(c *gin.Context) { handlers.GetRequests(c, db) })

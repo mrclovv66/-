@@ -11,32 +11,85 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ====== Получить все показания ======
+// ====== Получить все показания (с поиском) ======
 func GetMeters(c *gin.Context, db *sql.DB) {
-	rows, err := db.Query(`
-		SELECT Номер, Номер_документа, Адрес, Расчётный_месяц, Горячая_вода, Холодная_вода
+	search := strings.TrimSpace(c.Query("search"))
+
+	var (
+		rows *sql.Rows
+		err  error
+	)
+
+	// Базовый запрос
+	query := `
+		SELECT 
+			Номер, 
+			Номер_документа, 
+			Адрес, 
+			FORMAT(Расчётный_месяц, 'yyyy-MM') AS Расчётный_месяц,
+			Горячая_вода, 
+			Холодная_вода
 		FROM Показание_счётчиков
+	`
+
+	// Если есть строка поиска — добавляем WHERE
+	if search != "" {
+		query += `
+			WHERE 
+				Номер_документа LIKE '%' + @p1 + '%' OR
+				Адрес LIKE '%' + @p1 + '%' OR
+				FORMAT(Расчётный_месяц, 'yyyy-MM') LIKE '%' + @p1 + '%'
+		`
+	}
+
+	// Сортировка по месяцу (от нового к старому)
+	query += `
 		ORDER BY Расчётный_месяц DESC
-	`)
+	`
+
+	// Выполняем запрос
+	if search != "" {
+		rows, err = db.Query(query, search)
+	} else {
+		rows, err = db.Query(query)
+	}
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	defer rows.Close()
 
-	var meters []models.Meter
+	// ВАЖНО: инициализируем как пустой слайс, а не nil → в JSON будет [] а не null
+	meters := []models.Meter{}
+
 	for rows.Next() {
 		var (
 			m        models.Meter
-			rawMonth sql.NullTime
+			rawMonth sql.NullString
 		)
-		if err := rows.Scan(&m.ID, &m.DocNumber, &m.Address, &rawMonth, &m.HotWater, &m.ColdWater); err != nil {
+
+		if err := rows.Scan(
+			&m.ID,
+			&m.DocNumber,
+			&m.Address,
+			&rawMonth,
+			&m.HotWater,
+			&m.ColdWater,
+		); err != nil {
 			continue
 		}
+
 		if rawMonth.Valid {
-			m.BillingMonth = rawMonth.Time.Format("2006-01")
+			m.BillingMonth = rawMonth.String // уже "YYYY-MM"
 		}
+
 		meters = append(meters, m)
+	}
+
+	if err := rows.Err(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
 	c.JSON(http.StatusOK, meters)
@@ -103,7 +156,6 @@ func UpdateMeter(c *gin.Context, db *sql.DB) {
 
 	m.BillingMonth = normalizeMonth(m.BillingMonth)
 
-	// 🔹 Получаем реальный номер документа (на случай, если фронт не передал)
 	var docNumber string
 	err := db.QueryRow(`
 		SELECT Номер_документа FROM Показание_счётчиков WHERE Номер = @p1
@@ -116,7 +168,6 @@ func UpdateMeter(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// 🔹 Обновляем показания — триггер сам обновит услуги и ЕПД
 	_, err = db.Exec(`
 		UPDATE Показание_счётчиков
 		SET Расчётный_месяц=@p1, Горячая_вода=@p2, Холодная_вода=@p3
@@ -148,4 +199,30 @@ func normalizeMonth(value string) string {
 		return value + "-01"
 	}
 	return value
+}
+
+// ===== Получить список адресов =====
+func GetMeterAddresses(c *gin.Context, db *sql.DB) {
+	rows, err := db.Query(`
+		SELECT Адрес
+		FROM Квартира
+		ORDER BY Адрес
+	`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	// тоже инициализируем как пустой слайс
+	addresses := []string{}
+
+	for rows.Next() {
+		var a string
+		if err := rows.Scan(&a); err == nil {
+			addresses = append(addresses, a)
+		}
+	}
+
+	c.JSON(http.StatusOK, addresses)
 }
