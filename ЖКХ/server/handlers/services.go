@@ -71,20 +71,49 @@ func CreateService(c *gin.Context, db *sql.DB) {
 // === Обновить услугу ===
 func UpdateService(c *gin.Context, db *sql.DB) {
 	name := c.Param("id")
+
+	role := c.GetString("role")
+
 	var s models.Service
 	if err := c.BindJSON(&s); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
 
-	_, err := db.Exec(`UPDATE Услуга SET Категория=@p1, Стоимость=@p2 WHERE Наименование=@p3`,
-		s.Category, s.Price, name)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	// === Если employee — ему запрещено менять цену ===
+	if role == "employee" {
+		_, err := db.Exec(`
+			UPDATE Услуга 
+			SET Категория = @p1 
+			WHERE Наименование = @p2
+		`, s.Category, name)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Service category updated (price change restricted for employees)",
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Service updated"})
+	// === Если admin — может менять всё ===
+	if role == "admin" {
+		_, err := db.Exec(`
+			UPDATE Услуга 
+			SET Категория=@p1, Стоимость=@p2 
+			WHERE Наименование=@p3
+		`, s.Category, s.Price, name)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Service updated successfully"})
+	}
 }
 
 // === Архивировать услугу (вместо DELETE) ===

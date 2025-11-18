@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"server/models"
 
@@ -80,17 +81,18 @@ func CreateEPD(c *gin.Context, db *sql.DB) {
 	}
 
 	var data RequestData
+
 	if err := c.BindJSON(&data); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Некорректные данные"})
 		return
 	}
 
 	if len(data.Services) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No services selected"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Выберите хотя бы одну услугу"})
 		return
 	}
 
-	// Формируем SQL IN (@p1, @p2...)
+	// Формируем IN (@p1,@p2,...)
 	placeholders := ""
 	for i := range data.Services {
 		if i > 0 {
@@ -100,10 +102,10 @@ func CreateEPD(c *gin.Context, db *sql.DB) {
 	}
 
 	query := fmt.Sprintf(`
-		SELECT Наименование, Стоимость
-		FROM Услуга
-		WHERE Наименование IN (%s)
-	`, placeholders)
+        SELECT Наименование, Стоимость
+        FROM Услуга
+        WHERE Наименование IN (%s)
+    `, placeholders)
 
 	args := make([]any, len(data.Services))
 	for i, s := range data.Services {
@@ -129,22 +131,36 @@ func CreateEPD(c *gin.Context, db *sql.DB) {
 		}
 	}
 
-	// Создание ЕПД
+	// ========== ВСТАВКА ЕПД ==========
 	_, err = db.Exec(`
-		INSERT INTO ЕПД (Номер_документа, Адрес, Расчётный_месяц, Сумма)
-		VALUES (@p1, @p2, @p3, @p4)
-	`, data.DocNumber, data.Address, data.BillingMonth, total)
+        INSERT INTO ЕПД (Номер_документа, Адрес, Расчётный_месяц, Сумма)
+        VALUES (@p1, @p2, @p3, @p4)
+    `, data.DocNumber, data.Address, data.BillingMonth, total)
+
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		msg := err.Error()
+
+		if strings.Contains(msg, "PRIMARY KEY") ||
+			strings.Contains(msg, "duplicate") ||
+			strings.Contains(msg, "Повторяющееся значение") {
+
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Этот номер ЕПД уже используется. Укажите другой.",
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{"error": msg})
 		return
 	}
 
-	// Добавление услуг в Данные_об_услуге
+	// ========== ВСТАВКА УСЛУГ ==========
 	for name, price := range servicePrices {
 		_, err := db.Exec(`
-			INSERT INTO Данные_об_услуге (Наименование_услуги, Номер_ЕПД, Сумма)
-			VALUES (@p1, @p2, @p3)
-		`, name, data.DocNumber, price)
+            INSERT INTO Данные_об_услуге (Наименование_услуги, Номер_ЕПД, Сумма)
+            VALUES (@p1, @p2, @p3)
+        `, name, data.DocNumber, price)
+
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -152,7 +168,7 @@ func CreateEPD(c *gin.Context, db *sql.DB) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message":     "EPD created successfully",
+		"message":     "ЕПД успешно добавлен",
 		"totalAmount": total,
 	})
 }

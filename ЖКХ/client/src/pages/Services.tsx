@@ -7,7 +7,7 @@ type Service = {
   name: string;
   category: string;
   price: number;
-  status: string; // active | archive
+  status: string; // "active" | "archive"
 };
 
 export default function Services() {
@@ -111,11 +111,14 @@ export default function Services() {
     }
   };
 
-  // ===== UI =====
   return (
     <div style={{ padding: 20 }}>
       <NavBar />
-      <h2>Услуги</h2>
+      <h2>
+        {role === "admin"
+          ? "Управление услугами и тарифами"
+          : "Управление услугами"}
+      </h2>
 
       {/* вкладки */}
       <div style={{ marginBottom: 16 }}>
@@ -149,8 +152,8 @@ export default function Services() {
         </button>
       </div>
 
-      {/* кнопка добавить */}
-      {viewMode === "active" && (role === "employee" || role === "admin") && (
+      {/* кнопка добавить (ТОЛЬКО ДЛЯ ADMIN) */}
+      {viewMode === "active" && role === "admin" && (
         <div style={{ marginBottom: 16 }}>
           <button
             onClick={() => setShowAddForm((v) => !v)}
@@ -168,8 +171,8 @@ export default function Services() {
         </div>
       )}
 
-      {/* Форма добавления */}
-      {showAddForm && (
+      {/* Форма добавления (только admin) */}
+      {showAddForm && role === "admin" && (
         <form
           onSubmit={handleAddService}
           style={{
@@ -183,6 +186,7 @@ export default function Services() {
         >
           <h3>Добавить услугу</h3>
 
+          {/* Наименование */}
           <div style={{ marginBottom: 10 }}>
             <label>Наименование:</label>
             <input
@@ -195,6 +199,7 @@ export default function Services() {
             />
           </div>
 
+          {/* Категория */}
           <div style={{ marginBottom: 10 }}>
             <label>Категория:</label>
             <input
@@ -207,6 +212,7 @@ export default function Services() {
             />
           </div>
 
+          {/* Стоимость */}
           <div style={{ marginBottom: 10 }}>
             <label>Стоимость:</label>
             <input
@@ -251,6 +257,7 @@ export default function Services() {
         >
           <h3>Редактировать услугу</h3>
 
+          {/* Категория */}
           <div style={{ marginBottom: 10 }}>
             <label>Категория:</label>
             <input
@@ -263,11 +270,14 @@ export default function Services() {
             />
           </div>
 
+          {/* Стоимость (admin может, employee — нет) */}
           <div style={{ marginBottom: 10 }}>
             <label>Стоимость:</label>
+
             <input
               type="number"
               value={editService.price}
+              disabled={role === "employee"}
               onChange={(e) =>
                 setEditService({
                   ...editService,
@@ -275,8 +285,20 @@ export default function Services() {
                 })
               }
               required
-              style={{ marginLeft: 10, padding: 6, width: 260 }}
+              style={{
+                marginLeft: 10,
+                padding: 6,
+                width: 260,
+                background: role === "employee" ? "#eee" : "white",
+                cursor: role === "employee" ? "not-allowed" : "text",
+              }}
             />
+
+            {role === "employee" && (
+              <p style={{ color: "#a00", fontSize: 13, marginTop: 4 }}>
+                Только администратор может изменять тариф услуги
+              </p>
+            )}
           </div>
 
           <div style={{ display: "flex", gap: 8 }}>
