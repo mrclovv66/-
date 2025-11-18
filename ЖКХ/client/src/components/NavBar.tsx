@@ -28,7 +28,7 @@ export default function NavBar() {
       {/* Меню по ролям */}
       {role === "admin" && (
         <>
-          <Link to="/clients">Клиенты</Link>
+          <Link to="/clients">Сотрудники</Link>
           <Link to="/apartments">Квартиры</Link>
           <Link to="/services">Услуги</Link>
           <Link to="/epds">ЕПД</Link>
@@ -44,7 +44,6 @@ export default function NavBar() {
           <Link to="/epds">ЕПД</Link>
           <Link to="/debts">Задолженности</Link>
           <Link to="/requests">Заявки</Link>
-          <Link to="/services">Услуги</Link>
         </>
       )}
 

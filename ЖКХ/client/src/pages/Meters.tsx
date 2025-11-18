@@ -20,14 +20,12 @@ export default function Meters() {
 
   const formRef = useRef<HTMLDivElement | null>(null);
 
-  // Текущий месяц в формате YYYY-MM
   const getCurrentMonth = () => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   };
 
   const [form, setForm] = useState({
-    doc_number: "",
     address: "",
     billingMonth: getCurrentMonth(),
     hotWater: 1,
@@ -74,14 +72,20 @@ export default function Meters() {
   // ===== Отправка формы =====
   const handleSubmit = async () => {
     try {
+      const payload = {
+        address: form.address,
+        billingMonth: form.billingMonth,
+        hotWater: form.hotWater,
+        coldWater: form.coldWater,
+      };
+
       if (editingId) {
-        await api.put(`/meters/${editingId}`, form);
+        await api.put(`/meters/${editingId}`, payload);
       } else {
-        await api.post("/meters", form);
+        await api.post("/meters", payload);
       }
 
       setForm({
-        doc_number: "",
         address: "",
         billingMonth: getCurrentMonth(),
         hotWater: 1,
@@ -107,7 +111,6 @@ export default function Meters() {
   const startEdit = (m: MeterReading) => {
     setEditingId(m.id);
     setForm({
-      doc_number: m.doc_number,
       address: m.address,
       billingMonth: m.billingMonth,
       hotWater: m.hotWater,
@@ -144,7 +147,6 @@ export default function Meters() {
           onClick={() => {
             setShowForm(true);
             setForm({
-              doc_number: "",
               address: "",
               billingMonth: getCurrentMonth(),
               hotWater: 1,
@@ -167,7 +169,7 @@ export default function Meters() {
         </button>
       )}
 
-      {/* Форма добавления / редактирования */}
+      {/* Форма */}
       {showForm && (
         <div
           ref={formRef}
@@ -177,9 +179,7 @@ export default function Meters() {
             padding: "25px",
             background: "#f8f9fa",
             maxWidth: "520px",
-            marginBottom: "20px",
-            marginLeft: "auto",
-            marginRight: "auto", // по центру
+            margin: "0 auto 20px auto",
           }}
         >
           <button
@@ -187,7 +187,6 @@ export default function Meters() {
               setShowForm(false);
               setEditingId(null);
               setForm({
-                doc_number: "",
                 address: "",
                 billingMonth: getCurrentMonth(),
                 hotWater: 1,
@@ -213,34 +212,17 @@ export default function Meters() {
           </h3>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
-            {/* Номер ЕПД */}
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <label style={{ fontWeight: 500 }}>Номер ЕПД:</label>
-              <input
-                value={form.doc_number}
-                onChange={(e) =>
-                  setForm({ ...form, doc_number: e.target.value })
-                }
-                style={{
-                  padding: "8px",
-                  borderRadius: "6px",
-                  border: "1px solid #ccc",
-                }}
-              />
-            </div>
-
             {/* Адрес */}
-            <div style={{ display: "flex", flexDirection: "column" }}>
+            <div>
               <label style={{ fontWeight: 500 }}>Адрес:</label>
               <select
                 value={form.address}
-                onChange={(e) =>
-                  setForm({ ...form, address: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
                 style={{
                   padding: "8px",
                   borderRadius: "6px",
                   border: "1px solid #ccc",
+                  marginTop: 5,
                 }}
               >
                 <option value="">Выберите адрес</option>
@@ -253,7 +235,7 @@ export default function Meters() {
             </div>
 
             {/* Месяц */}
-            <div style={{ display: "flex", flexDirection: "column" }}>
+            <div>
               <label style={{ fontWeight: 500 }}>Месяц:</label>
               <input
                 type="month"
@@ -265,17 +247,18 @@ export default function Meters() {
                   padding: "8px",
                   borderRadius: "6px",
                   border: "1px solid #ccc",
+                  marginTop: 5,
                 }}
               />
             </div>
 
             {/* Горячая вода */}
-            <div style={{ display: "flex", flexDirection: "column" }}>
+            <div>
               <label style={{ fontWeight: 500 }}>Горячая вода:</label>
               <input
                 type="number"
+                min={1}
                 value={form.hotWater}
-                min={0}
                 onChange={(e) =>
                   setForm({ ...form, hotWater: Number(e.target.value) })
                 }
@@ -283,17 +266,18 @@ export default function Meters() {
                   padding: "8px",
                   borderRadius: "6px",
                   border: "1px solid #ccc",
+                  marginTop: 5,
                 }}
               />
             </div>
 
             {/* Холодная вода */}
-            <div style={{ display: "flex", flexDirection: "column" }}>
+            <div>
               <label style={{ fontWeight: 500 }}>Холодная вода:</label>
               <input
                 type="number"
+                min={1}
                 value={form.coldWater}
-                min={0}
                 onChange={(e) =>
                   setForm({ ...form, coldWater: Number(e.target.value) })
                 }
@@ -301,11 +285,11 @@ export default function Meters() {
                   padding: "8px",
                   borderRadius: "6px",
                   border: "1px solid #ccc",
+                  marginTop: 5,
                 }}
               />
             </div>
 
-            {/* Кнопка добавить / сохранить */}
             <button
               onClick={handleSubmit}
               style={{
@@ -326,7 +310,7 @@ export default function Meters() {
         </div>
       )}
 
-      {/* Таблица показаний */}
+      {/* Таблица */}
       <table border={1} cellPadding={6}>
         <thead>
           <tr>
