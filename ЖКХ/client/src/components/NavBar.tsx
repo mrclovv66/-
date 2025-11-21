@@ -6,10 +6,9 @@ export default function NavBar() {
   const { role, logout } = useAuth();
   const navigate = useNavigate();
 
-  // функция выхода
   const handleLogout = () => {
-    logout(); // очищаем токен и роль
-    navigate("/login"); // возвращаем на страницу входа
+    logout();
+    navigate("/login");
   };
 
   return (
@@ -17,7 +16,7 @@ export default function NavBar() {
       style={{
         display: "flex",
         alignItems: "center",
-        gap: "10px",
+        gap: "12px",
         padding: "10px 20px",
         background: "#eee",
         borderBottom: "1px solid #ccc",
@@ -25,17 +24,21 @@ export default function NavBar() {
     >
       <Link to="/dashboard">🏠 Главная</Link>
 
-      {/* Меню по ролям */}
+      {/* ===== ADMIN ===== */}
       {role === "admin" && (
         <>
-          <Link to="/clients">Сотрудники</Link>
-          <Link to="/apartments">Квартиры</Link>
+          <Link to="/employees">Сотрудники</Link>
+          {/* <Link to="/clients">Клиенты</Link> */}
           <Link to="/services">Услуги</Link>
+          <Link to="/reports">Отчёты</Link>
+          {/* <Link to="/apartments">Квартиры</Link>
           <Link to="/epds">ЕПД</Link>
           <Link to="/debts">Задолженности</Link>
+          <Link to="/requests">Заявки</Link> */}
         </>
       )}
 
+      {/* ===== EMPLOYEE ===== */}
       {role === "employee" && (
         <>
           <Link to="/clients">Клиенты</Link>
@@ -48,6 +51,7 @@ export default function NavBar() {
         </>
       )}
 
+      {/* ===== CLIENT ===== */}
       {role === "client" && (
         <>
           <Link to="/profile">Личный кабинет</Link>
@@ -55,7 +59,7 @@ export default function NavBar() {
         </>
       )}
 
-      {/* Кнопка выхода */}
+      {/* ===== LOGOUT ===== */}
       <button
         onClick={handleLogout}
         style={{

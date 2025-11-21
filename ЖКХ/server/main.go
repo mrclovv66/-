@@ -12,7 +12,9 @@ func main() {
 	InitDB() // подключаемся к SQL Server
 	r := gin.Default()
 
+	// ============================
 	// CORS middleware
+	// ============================
 	r.Use(func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
@@ -24,7 +26,9 @@ func main() {
 		c.Next()
 	})
 
-	// Подключаем маршруты
+	// ============================
+	// Маршруты
+	// ============================
 	RegisterRoutes(r)
 
 	r.Run(":8082")
@@ -33,17 +37,49 @@ func main() {
 func RegisterRoutes(r *gin.Engine) {
 	api := r.Group("/api")
 	{
-		// === Авторизация ===
+		// ============================================
+		// AUTH
+		// ============================================
 		api.POST("/login", func(c *gin.Context) { handlers.LoginHandler(c, db) })
 
-		// === Профиль клиента ===
-		api.GET("/profile", middleware.RequireAuth(), func(c *gin.Context) { handlers.GetProfile(c, db) })
-		api.GET("/profile/meters", middleware.RequireAuth(), func(c *gin.Context) { handlers.GetProfileMeters(c, db) })
-		api.GET("/profile/epd", middleware.RequireAuth(), func(c *gin.Context) { handlers.GetProfileEPD(c, db) })
-		api.GET("/profile/debts", middleware.RequireAuth(), func(c *gin.Context) { handlers.GetProfileDebts(c, db) })
+		// ============================================
+		// CLIENT PROFILE (роль client)
+		// ============================================
+		api.GET("/profile", middleware.RequireAuth(),
+			func(c *gin.Context) { handlers.GetProfile(c, db) })
+
+		api.GET("/profile/meters", middleware.RequireAuth(),
+			func(c *gin.Context) { handlers.GetProfileMeters(c, db) })
+
+		api.GET("/profile/epd", middleware.RequireAuth(),
+			func(c *gin.Context) { handlers.GetProfileEPD(c, db) })
+
+		api.GET("/profile/debts", middleware.RequireAuth(),
+			func(c *gin.Context) { handlers.GetProfileDebts(c, db) })
+
+		api.GET("/epds/:doc/download", middleware.RequireAuth(),
+			func(c *gin.Context) { handlers.DownloadEPD(c, db) })
 
 		// ============================================
-		//  CLIENTS — доступ admin + employee
+		// EMPLOYEES (admin)
+		// ============================================
+		api.GET("/employees", middleware.RequireAuth(), middleware.RequireRole("admin"),
+			func(c *gin.Context) { handlers.GetEmployees(c, db) })
+
+		api.POST("/employees", middleware.RequireAuth(), middleware.RequireRole("admin"),
+			func(c *gin.Context) { handlers.CreateEmployee(c, db) })
+
+		api.PUT("/employees/:id", middleware.RequireAuth(), middleware.RequireRole("admin"),
+			func(c *gin.Context) { handlers.UpdateEmployee(c, db) })
+
+		api.DELETE("/employees/:id", middleware.RequireAuth(), middleware.RequireRole("admin"),
+			func(c *gin.Context) { handlers.ArchiveEmployee(c, db) })
+
+		api.PUT("/employees/:id/restore", middleware.RequireAuth(), middleware.RequireRole("admin"),
+			func(c *gin.Context) { handlers.RestoreEmployee(c, db) })
+
+		// ============================================
+		// CLIENTS (admin + employee)
 		// ============================================
 		api.GET("/clients", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
 			func(c *gin.Context) { handlers.GetClients(c, db) })
@@ -61,7 +97,7 @@ func RegisterRoutes(r *gin.Engine) {
 			func(c *gin.Context) { handlers.RestoreClient(c, db) })
 
 		// ============================================
-		//  APARTMENTS — доступ admin + employee
+		// APARTMENTS (admin + employee)
 		// ============================================
 		api.GET("/apartments", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
 			func(c *gin.Context) { handlers.GetApartments(c, db) })
@@ -73,7 +109,7 @@ func RegisterRoutes(r *gin.Engine) {
 			func(c *gin.Context) { handlers.UpdateApartment(c, db) })
 
 		// ============================================
-		//  METERS — доступ только employee
+		// METERS (employee)
 		// ============================================
 		api.GET("/meters", middleware.RequireAuth(), middleware.RequireRole("employee"),
 			func(c *gin.Context) { handlers.GetMeters(c, db) })
@@ -91,33 +127,28 @@ func RegisterRoutes(r *gin.Engine) {
 			func(c *gin.Context) { handlers.GetMeterAddresses(c, db) })
 
 		// ============================================
-		//  SERVICES — доступ admin + employee
+		// SERVICES (admin + employee)
 		// ============================================
 		api.GET("/services", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
 			func(c *gin.Context) { handlers.GetServices(c, db) })
 
-		// Добавлять услуги может только admin
 		api.POST("/services", middleware.RequireAuth(), middleware.RequireRole("admin"),
 			func(c *gin.Context) { handlers.CreateService(c, db) })
 
-		// Редактировать может и admin, и employee
 		api.PUT("/services/:id", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
 			func(c *gin.Context) { handlers.UpdateService(c, db) })
 
-		// Архивировать — admin + employee
 		api.PUT("/services/:id/archive", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
 			func(c *gin.Context) { handlers.ArchiveService(c, db) })
 
-		// Восстановить — admin + employee
 		api.PUT("/services/:id/restore", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
 			func(c *gin.Context) { handlers.RestoreService(c, db) })
 
-		// Только активные услуги — для создания ЕПД
 		api.GET("/services/active", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
 			func(c *gin.Context) { handlers.GetActiveServices(c, db) })
 
 		// ============================================
-		//  EPDS — admin + employee
+		// EPDS (admin + employee)
 		// ============================================
 		api.GET("/epds", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
 			func(c *gin.Context) { handlers.GetEPDs(c, db) })
@@ -132,13 +163,13 @@ func RegisterRoutes(r *gin.Engine) {
 			func(c *gin.Context) { handlers.DeleteEPD(c, db) })
 
 		// ============================================
-		//  DEBTS — admin + employee
+		// DEBTS (admin + employee)
 		// ============================================
 		api.GET("/debts", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
 			func(c *gin.Context) { handlers.GetDebts(c, db) })
 
 		// ============================================
-		//  REQUESTS — admin + employee
+		// REQUESTS
 		// ============================================
 		api.GET("/requests", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
 			func(c *gin.Context) { handlers.GetRequests(c, db) })
@@ -151,5 +182,37 @@ func RegisterRoutes(r *gin.Engine) {
 
 		api.DELETE("/requests/:id", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
 			func(c *gin.Context) { handlers.DeleteRequest(c, db) })
+
+		// ============================================
+		// REPORTS (admin) — 🔥 НОВЫЙ БЛОК 🔥
+		// ============================================
+
+		api.GET("/reports/payments", middleware.RequireAuth(), middleware.RequireRole("admin"),
+			func(c *gin.Context) { handlers.GetPaymentsReport(c, db) })
+
+		api.GET("/reports/payments/excel", middleware.RequireAuth(), middleware.RequireRole("admin"),
+			func(c *gin.Context) { handlers.DownloadPaymentsExcel(c, db) })
+
+		api.GET("/reports/consumption", middleware.RequireAuth(), middleware.RequireRole("admin"),
+			func(c *gin.Context) { handlers.GetConsumptionReport(c, db) })
+
+		api.GET("/reports/consumption/excel", middleware.RequireAuth(), middleware.RequireRole("admin"),
+			func(c *gin.Context) { handlers.DownloadConsumptionExcel(c, db) })
+
+		api.GET("/reports/debtors", middleware.RequireAuth(), middleware.RequireRole("admin"),
+			func(c *gin.Context) { handlers.GetDebtors(c, db) })
+
+		api.GET("/reports/debtors/excel", middleware.RequireAuth(), middleware.RequireRole("admin"),
+			func(c *gin.Context) { handlers.DownloadDebtorsExcel(c, db) })
+
+		api.GET("/reports/history", middleware.RequireAuth(), middleware.RequireRole("admin"),
+			func(c *gin.Context) { handlers.GetPaymentHistory(c, db) })
+
+		api.GET("/reports/history/excel", middleware.RequireAuth(), middleware.RequireRole("admin"),
+			func(c *gin.Context) { handlers.DownloadHistoryExcel(c, db) })
+
+		api.GET("/addresses", middleware.RequireAuth(), middleware.RequireRole("admin"),
+			func(c *gin.Context) { handlers.GetAllAddresses(c, db) })
+
 	}
 }

@@ -42,6 +42,29 @@ export default function Profile() {
   const [epds, setEpds] = useState<EPD[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
 
+  // ===== скачать квитанцию епд  =====
+  const downloadEPD = async (docNumber: string) => {
+    try {
+      const response = await api.get(`/epds/${docNumber}/download`, {
+        responseType: "blob",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `EPD-${docNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      alert("Ошибка скачивания PDF");
+      console.error(err);
+    }
+  };
+
   // ===== форма передачи показаний =====
   const [selectedAddress, setSelectedAddress] = useState("");
   const [billingMonth, setBillingMonth] = useState(
@@ -352,6 +375,7 @@ export default function Profile() {
                 <th>Месяц</th>
                 <th>Сумма</th>
                 <th>Статус</th>
+                <th>Квитанция</th>
               </tr>
             </thead>
             <tbody>
@@ -382,6 +406,22 @@ export default function Profile() {
                       </button>
                     )}
                   </td>
+                  <td>
+                    <button
+                      onClick={() => downloadEPD(e.docNumber)}
+                      style={{
+                        padding: "5px 10px",
+                        background: "#007bff",
+                        color: "white",
+                        border: "none",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Скачать
+                    </button>
+                  </td>
+
                 </tr>
               ))}
             </tbody>

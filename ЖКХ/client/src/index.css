@@ -81,3 +81,85 @@ h2 {
 div {
   margin: 10px;
 }
+
+/* ===== Отчёты — вкладки ===== */
+
+.tabs {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+  justify-content: center;
+}
+
+.tab {
+  padding: 8px 16px;
+  background-color: #e6e9f0;
+  border-radius: 6px;
+  border: 1px solid #ccd1d9;
+  cursor: pointer;
+  transition: 0.2s;
+  font-weight: 600;
+}
+
+.tab:hover {
+  background-color: #d7dce5;
+}
+
+.tab.active {
+  background-color: #0077ff;
+  color: white;
+  border-color: #0077ff;
+}
+
+/* ===== Контент вкладок ===== */
+.tab-content {
+  background: white;
+  padding: 20px;
+  margin: 0 auto;
+  width: 90%;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+/* ===== Фильтры отчётов ===== */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 20px;
+  justify-content: center;
+}
+
+.filters label {
+  display: flex;
+  flex-direction: column;
+  font-weight: 600;
+  color: #333;
+}
+
+.filters input,
+.filters select {
+  width: 220px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  margin-top: 5px;
+}
+
+/* ===== Таблицы отчётов ===== */
+
+.table {
+  width: 95%;
+  margin: 20px auto;
+}
+
+/* totals (итоги) */
+.totals {
+  padding: 10px;
+  background-color: #eef3ff;
+  width: 95%;
+  margin: 10px auto;
+  border-radius: 6px;
+  font-weight: 600;
+}
