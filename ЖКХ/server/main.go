@@ -114,10 +114,10 @@ func RegisterRoutes(r *gin.Engine) {
 		api.GET("/meters", middleware.RequireAuth(), middleware.RequireRole("employee"),
 			func(c *gin.Context) { handlers.GetMeters(c, db) })
 
-		api.POST("/meters", middleware.RequireAuth(), middleware.RequireRole("employee"),
+		api.POST("/meters", middleware.RequireAuth(), middleware.RequireRole("client", "employee"),
 			func(c *gin.Context) { handlers.CreateMeter(c, db) })
 
-		api.PUT("/meters/:id", middleware.RequireAuth(), middleware.RequireRole("employee"),
+		api.PUT("/meters/:id", middleware.RequireAuth(), middleware.RequireRole("client", "employee"),
 			func(c *gin.Context) { handlers.UpdateMeter(c, db) })
 
 		api.DELETE("/meters/:id", middleware.RequireAuth(), middleware.RequireRole("employee"),
@@ -156,7 +156,7 @@ func RegisterRoutes(r *gin.Engine) {
 		api.POST("/epds", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
 			func(c *gin.Context) { handlers.CreateEPD(c, db) })
 
-		api.PUT("/epds/:id/pay", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
+		api.PUT("/epds/:id/pay", middleware.RequireAuth(), middleware.RequireRole("client", "admin", "employee"),
 			func(c *gin.Context) { handlers.PayEPD(c, db) })
 
 		api.DELETE("/epds/:id", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
@@ -171,7 +171,9 @@ func RegisterRoutes(r *gin.Engine) {
 		// ============================================
 		// REQUESTS
 		// ============================================
-		api.GET("/requests", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
+		api.GET("/requests",
+			middleware.RequireAuth(),
+			middleware.RequireRole("admin", "employee", "client"),
 			func(c *gin.Context) { handlers.GetRequests(c, db) })
 
 		api.POST("/requests", middleware.RequireAuth(), middleware.RequireRole("client"),
