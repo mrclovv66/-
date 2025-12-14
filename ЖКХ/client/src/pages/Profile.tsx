@@ -339,7 +339,7 @@ export default function Profile() {
                     <th>Месяц</th>
                     <th>Горячая</th>
                     <th>Холодная</th>
-                    <th></th>
+                    {/* <th></th> */}
                   </tr>
                 </thead>
                 <tbody>
@@ -348,9 +348,9 @@ export default function Profile() {
                       <td>{m.month}</td>
                       <td>{m.hot}</td>
                       <td>{m.cold}</td>
-                      <td>
+                      {/* <td>
                         <button onClick={() => startEdit(m)}>✏</button>
-                      </td>
+                      </td> */}
                     </tr>
                   ))}
                 </tbody>

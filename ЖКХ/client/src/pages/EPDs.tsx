@@ -282,7 +282,7 @@ export default function EPDs() {
           </thead>
 
           <tbody>
-            {epds.map((e, i) => (
+            {(epds || []).map((e, i) => (
               <tr key={i} style={{ textAlign: "center" }}>
                 <td>{e.docNumber}</td>
                 <td>{e.address}</td>

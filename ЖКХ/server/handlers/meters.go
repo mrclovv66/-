@@ -97,11 +97,10 @@ func GetMeters(c *gin.Context, db *sql.DB) {
 
 // ====== Добавить новое показание ======
 func CreateMeter(c *gin.Context, db *sql.DB) {
-	// Входные данные только то, что реально вводят:
-	// адрес, месяц, горячая, холодная
+
 	type meterInput struct {
 		Address      string `json:"address"`
-		BillingMonth string `json:"billingMonth"` // "YYYY-MM" из <input type="month">
+		BillingMonth string `json:"billingMonth"` // "YYYY-MM"
 		HotWater     int    `json:"hotWater"`
 		ColdWater    int    `json:"coldWater"`
 	}
@@ -125,18 +124,13 @@ func CreateMeter(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// Преобразуем "YYYY-MM" → "YYYY-MM-01" для записи в таблицу
+	// YYYY-MM → YYYY-MM-01
 	normalizedMonth := normalizeMonth(in.BillingMonth)
 
-	// Разбираем год и месяц для поиска ЕПД
-	year, errY := strconv.Atoi(in.BillingMonth[0:4])
-	month, errM := strconv.Atoi(in.BillingMonth[5:7])
-	if errY != nil || errM != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Некорректный формат месяца"})
-		return
-	}
+	// Ищем месяц по ЕПД
+	year, _ := strconv.Atoi(in.BillingMonth[0:4])
+	month, _ := strconv.Atoi(in.BillingMonth[5:7])
 
-	// === Ищем ЕПД по адресу + году + месяцу ===
 	var docNumber string
 	err := db.QueryRow(`
         SELECT TOP 1 Номер_документа
@@ -156,7 +150,7 @@ func CreateMeter(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// === Вставляем показания, docNumber берём из найденного ЕПД ===
+	// Пытаемся вставить данные
 	_, err = db.Exec(`
         INSERT INTO Показание_счётчиков 
             (Номер_документа, Адрес, Расчётный_месяц, Горячая_вода, Холодная_вода)
@@ -164,7 +158,42 @@ func CreateMeter(c *gin.Context, db *sql.DB) {
     `, docNumber, in.Address, normalizedMonth, in.HotWater, in.ColdWater)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка добавления показаний: " + err.Error()})
+
+		errStr := err.Error()
+
+		// === 1. Дубликат месяца (UNIQUE KEY) ===
+		if strings.Contains(errStr, "UNIQUE") ||
+			strings.Contains(errStr, "duplicate") ||
+			strings.Contains(errStr, "повторяющийся ключ") {
+
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Показания за этот месяц уже существуют",
+			})
+			return
+		}
+
+		// === 2. Ошибка триггера ROLLBACK ===
+		if strings.Contains(errStr, "Транзакция завершилась в триггере") ||
+			strings.Contains(errStr, "The transaction ended in the trigger") {
+
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Показания введены некорректно. Проверьте значения.",
+			})
+			return
+		}
+
+		// === 3. Ошибка другого триггера ===
+		if strings.Contains(errStr, "Показания меньше предыдущих") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Показания меньше предыдущих — проверьте данные",
+			})
+			return
+		}
+
+		// === 4. Любая другая SQL ошибка ===
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Ошибка добавления показаний: " + errStr,
+		})
 		return
 	}
 

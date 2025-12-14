@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 	"server/models"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -53,19 +54,36 @@ func GetActiveServices(c *gin.Context, db *sql.DB) {
 func CreateService(c *gin.Context, db *sql.DB) {
 	var s models.Service
 	if err := c.BindJSON(&s); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Некорректный формат запроса"})
 		return
 	}
 
-	_, err := db.Exec(`INSERT INTO Услуга (Наименование, Категория, Стоимость, Статус)
-					   VALUES (@p1, @p2, @p3, 'active')`,
-		s.Name, s.Category, s.Price)
+	_, err := db.Exec(`
+        INSERT INTO Услуга (Наименование, Категория, Стоимость, Статус)
+        VALUES (@p1, @p2, @p3, 'active')
+    `, s.Name, s.Category, s.Price)
+
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errStr := err.Error()
+
+		// === Ошибка: услуга с таким названием уже существует ===
+		if strings.Contains(errStr, "PRIMARY KEY") ||
+			strings.Contains(errStr, "повторяющийся ключ") ||
+			strings.Contains(errStr, "duplicate") {
+
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Услуга с таким названием уже существует",
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Ошибка добавления услуги: " + errStr,
+		})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "Service created"})
+	c.JSON(http.StatusCreated, gin.H{"message": "Услуга успешно добавлена"})
 }
 
 // === Обновить услугу ===

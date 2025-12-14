@@ -334,7 +334,7 @@ export default function Meters() {
               <td>{m.coldWater}</td>
               <td>
                 <button onClick={() => startEdit(m)}>✏</button>
-                <button onClick={() => handleDelete(m.id)}>🗑</button>
+                {/* <button onClick={() => handleDelete(m.id)}>🗑</button> */}
               </td>
             </tr>
           ))}
