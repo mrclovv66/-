@@ -3,7 +3,11 @@ import api from "../api/api";
 import NavBar from "../components/NavBar";
 import { useAuth } from "../hooks/useAuth";
 
-type Apartment = { address: string };
+type Apartment = {
+  address: string;
+  rooms: number;
+  area: number;
+};
 
 type Meter = {
   id: number;
@@ -25,7 +29,6 @@ type Debt = {
   id: number;
   address: string;
   amount: number;
-  dueDate: string;
 };
 
 type ProfileData = {
@@ -219,7 +222,10 @@ export default function Profile() {
           <h4>Мои квартиры:</h4>
           <ul>
             {data.apartments.map((a, i) => (
-              <li key={i}>{a.address}</li>
+              <li key={i}>
+                <b>{a.address}</b><br />
+                Комнат: {a.rooms}, Площадь: {a.area} м²
+              </li>
             ))}
           </ul>
         </div>
@@ -441,7 +447,6 @@ export default function Profile() {
               <tr>
                 <th>Адрес</th>
                 <th>Сумма</th>
-                <th>Срок выплаты</th>
               </tr>
             </thead>
             <tbody>
@@ -449,13 +454,13 @@ export default function Profile() {
                 <tr key={d.id}>
                   <td>{d.address}</td>
                   <td>{d.amount} ₽</td>
-                  <td>{d.dueDate ? d.dueDate.split("T")[0] : "—"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </section>
+
     </div>
   );
 }

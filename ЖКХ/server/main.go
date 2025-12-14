@@ -60,6 +60,9 @@ func RegisterRoutes(r *gin.Engine) {
 		api.GET("/epds/:doc/download", middleware.RequireAuth(),
 			func(c *gin.Context) { handlers.DownloadEPD(c, db) })
 
+		api.GET("/profile/services", middleware.RequireAuth(),
+			func(c *gin.Context) { handlers.GetProfileServices(c, db) })
+
 		// ============================================
 		// EMPLOYEES (admin)
 		// ============================================

@@ -11,6 +11,13 @@ import (
 // ===== Структуры данных =====
 type Apartment struct {
 	Address string `json:"address"`
+	Rooms   int    `json:"rooms"`
+	Area    int    `json:"area"`
+}
+
+type ServiceInfo struct {
+	Name  string  `json:"name"`
+	Price float64 `json:"price"`
 }
 
 type ProfileData struct {
@@ -47,29 +54,29 @@ type Debt struct {
 func GetProfile(c *gin.Context, db *sql.DB) {
 	clientID, exists := c.Get("client_id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized - no client_id"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
 	var profile ProfileData
 	profile.Apartments = make([]Apartment, 0)
 
-	// Основная информация клиента
+	// Клиент
 	err := db.QueryRow(`
-		SELECT [ФИО], [Номер_телефона] 
-		FROM [Клиент] 
+		SELECT [ФИО], [Номер_телефона]
+		FROM [Клиент]
 		WHERE [Id_клиента] = @p1
 	`, clientID).Scan(&profile.FullName, &profile.Phone)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Клиент не найден: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Квартиры клиента
+	// Квартиры (ПОЛНЫЕ ДАННЫЕ)
 	rows, err := db.Query(`
-		SELECT [Адрес] 
-		FROM [Квартира] 
+		SELECT [Адрес], [Количество_комнат], [Площадь]
+		FROM [Квартира]
 		WHERE [Id_владельца] = @p1
 	`, clientID)
 
@@ -77,7 +84,7 @@ func GetProfile(c *gin.Context, db *sql.DB) {
 		defer rows.Close()
 		for rows.Next() {
 			var a Apartment
-			if scanErr := rows.Scan(&a.Address); scanErr == nil {
+			if err := rows.Scan(&a.Address, &a.Rooms, &a.Area); err == nil {
 				profile.Apartments = append(profile.Apartments, a)
 			}
 		}
@@ -199,10 +206,9 @@ func GetProfileDebts(c *gin.Context, db *sql.DB) {
 
 	rows, err := db.Query(`
 		SELECT 
-		    z.[Номер], 
-		    z.[Адрес], 
-		    z.[Сумма], 
-		    z.[Срок_выплаты]
+		    z.[Номер],
+		    z.[Адрес],
+		    z.[Сумма]
 		FROM [Задолженность] z
 		JOIN [Квартира] k ON z.[Адрес] = k.[Адрес]
 		WHERE k.[Id_владельца] = @p1
@@ -219,10 +225,35 @@ func GetProfileDebts(c *gin.Context, db *sql.DB) {
 
 	for rows.Next() {
 		var d Debt
-		if err := rows.Scan(&d.ID, &d.Address, &d.Amount, &d.DueDate); err == nil {
+		if err := rows.Scan(&d.ID, &d.Address, &d.Amount); err == nil {
 			debts = append(debts, d)
 		}
 	}
 
 	c.JSON(http.StatusOK, debts)
+}
+
+func GetProfileServices(c *gin.Context, db *sql.DB) {
+	rows, err := db.Query(`
+		SELECT [Наименование], [Стоимость]
+		FROM [Услуга]
+		WHERE [Статус] = 'active'
+		ORDER BY [Наименование]
+	`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	services := []ServiceInfo{}
+
+	for rows.Next() {
+		var s ServiceInfo
+		if err := rows.Scan(&s.Name, &s.Price); err == nil {
+			services = append(services, s)
+		}
+	}
+
+	c.JSON(http.StatusOK, services)
 }
