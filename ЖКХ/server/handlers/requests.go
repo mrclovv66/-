@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -36,14 +35,13 @@ func GetRequests(c *gin.Context, db *sql.DB) {
 			SELECT 
 				z.[ID_заявки],
 				z.[ID_клиента],
-				k.[ФИО] AS [ФИО_клиента],
+				'' AS [ФИО_клиента],
 				z.[Адрес_квартиры],
 				z.[Тип_заявки],
 				z.[Описание],
 				z.[Дата_создания],
 				z.[Статус]
 			FROM [Заявки] z
-			JOIN [Клиент] k ON z.[ID_клиента] = k.[Id_клиента]
 			WHERE z.[ID_клиента] = @p1
 			ORDER BY z.[Дата_создания] DESC
 		`, clientID)
@@ -117,9 +115,10 @@ func CreateRequest(c *gin.Context, db *sql.DB) {
 
 	// Добавляем запись с текущей датой
 	_, err := db.Exec(`
-		INSERT INTO [Заявки] ([ID_клиента], [Адрес_квартиры], [Тип_заявки], [Описание], [Дата_создания])
-		VALUES (@p1, @p2, @p3, @p4, @p5)
-	`, clientID, req.Address, req.RequestType, req.Description, time.Now().Format("2006-01-02"))
+		INSERT INTO [Заявки]
+		([ID_клиента], [Адрес_квартиры], [Тип_заявки], [Описание], [Дата_создания])
+		VALUES (@p1, @p2, @p3, @p4, CAST(GETDATE() AS DATE))
+	`, clientID, req.Address, req.RequestType, req.Description)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -161,10 +160,7 @@ func UpdateRequestStatus(c *gin.Context, db *sql.DB) {
 // ===== Удаление заявки =====
 func DeleteRequest(c *gin.Context, db *sql.DB) {
 	role, _ := c.Get("role")
-	if role == "client" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Недостаточно прав"})
-		return
-	}
+	clientID, _ := c.Get("client_id")
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -172,9 +168,34 @@ func DeleteRequest(c *gin.Context, db *sql.DB) {
 		return
 	}
 
+	if role == "client" {
+		// 🔒 клиент может удалить только СВОЮ заявку
+		res, err := db.Exec(`
+			DELETE FROM [Заявки]
+			WHERE [ID_заявки] = @p1 AND [ID_клиента] = @p2
+		`, id, clientID)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		rows, _ := res.RowsAffected()
+		if rows == 0 {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "Нет прав на удаление этой заявки",
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Заявка удалена"})
+		return
+	}
+
+	// 🔓 employee / admin — без ограничений
 	_, err = db.Exec(`DELETE FROM [Заявки] WHERE [ID_заявки] = @p1`, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка удаления заявки: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 

@@ -179,7 +179,7 @@ func RegisterRoutes(r *gin.Engine) {
 		api.PUT("/requests/:id/status", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
 			func(c *gin.Context) { handlers.UpdateRequestStatus(c, db) })
 
-		api.DELETE("/requests/:id", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
+		api.DELETE("/requests/:id", middleware.RequireAuth(),
 			func(c *gin.Context) { handlers.DeleteRequest(c, db) })
 
 		// ============================================

@@ -277,13 +277,13 @@ export default function Requests() {
           <thead>
             <tr>
               <th>ID</th>
-              <th>Клиент</th>
+              {(role === "employee" || role === "admin") && <th>Клиент</th>}
               <th>Адрес</th>
               <th>Тип</th>
               <th>Описание</th>
               <th>Дата</th>
               <th>Статус</th>
-              {(role === "employee" || role === "admin") && <th>Действия</th>}
+              <th>Действия</th>
             </tr>
           </thead>
           <tbody>
@@ -295,7 +295,7 @@ export default function Requests() {
               requests.map((r) => (
                 <tr key={r.id}>
                   <td>{r.id}</td>
-                  <td>{r.full_name}</td>
+                  {(role === "employee" || role === "admin") && <td>{r.full_name}</td>}
                   <td>{r.address}</td>
                   <td>{r.request_type}</td>
                   <td>{r.description}</td>
@@ -304,6 +304,24 @@ export default function Requests() {
                   {(role === "employee" || role === "admin") && (
                     <td>{renderStatusButtons(r)}</td>
                   )}
+                  {role === "client" && (
+                  <td>
+                    <button
+                      onClick={() => deleteRequest(r.id)}
+                      style={{
+                        padding: "5px 10px",
+                        background: "#dc3545",
+                        color: "white",
+                        border: "none",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Удалить
+                    </button>
+                  </td>
+                )}
+
                 </tr>
               ))
             )}
