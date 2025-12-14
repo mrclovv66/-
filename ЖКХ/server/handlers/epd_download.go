@@ -173,14 +173,13 @@ func DownloadEPD(c *gin.Context, db *sql.DB) {
 		pdf.CellFormat(0, 6, "Показания приборов учета", "", 1, "L", false, 0, "")
 		pdf.SetFont("dejavu", "B", 9)
 
-		col1 := 70.0
-		col2 := 40.0
-		col3 := 40.0
+		col1 := 90.0
+		col2 := 60.0
 		rowH := 6.0
 
+		// Заголовок
 		pdf.CellFormat(col1, rowH, "Наименование услуги", "1", 0, "C", true, 0, "")
 		pdf.CellFormat(col2, rowH, "Текущие показания", "1", 0, "C", true, 0, "")
-		pdf.CellFormat(col3, rowH, "Месяц", "1", 0, "C", true, 0, "")
 		pdf.Ln(-1)
 
 		pdf.SetFont("dejavu", "", 9)
@@ -188,13 +187,11 @@ func DownloadEPD(c *gin.Context, db *sql.DB) {
 		// Горячая вода
 		pdf.CellFormat(col1, rowH, "Горячая вода", "1", 0, "L", false, 0, "")
 		pdf.CellFormat(col2, rowH, fmt.Sprintf("%d", meter.Hot), "1", 0, "C", false, 0, "")
-		pdf.CellFormat(col3, rowH, meter.Month.Format("01.2006"), "1", 0, "C", false, 0, "")
 		pdf.Ln(-1)
 
 		// Холодная вода
 		pdf.CellFormat(col1, rowH, "Холодная вода", "1", 0, "L", false, 0, "")
 		pdf.CellFormat(col2, rowH, fmt.Sprintf("%d", meter.Cold), "1", 0, "C", false, 0, "")
-		pdf.CellFormat(col3, rowH, meter.Month.Format("01.2006"), "1", 0, "C", false, 0, "")
 		pdf.Ln(10)
 	}
 
