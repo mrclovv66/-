@@ -92,7 +92,34 @@ func CreateEPD(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// Формируем IN (@p1,@p2,...)
+	// =====================================================
+	// 🔴 ПРОВЕРКА: адрес + месяц (КЛЮЧЕВОЕ ТРЕБОВАНИЕ)
+	// =====================================================
+	var exists int
+	err := db.QueryRow(`
+		SELECT COUNT(*)
+		FROM ЕПД
+		WHERE Адрес = @p1
+		  AND Расчётный_месяц = @p2
+	`, data.Address, data.BillingMonth).Scan(&exists)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Ошибка проверки существующего ЕПД",
+		})
+		return
+	}
+
+	if exists > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "По этому адресу на выбранный месяц уже существует ЕПД",
+		})
+		return
+	}
+
+	// =====================================================
+	// Формируем IN (@p1,@p2,...) для услуг
+	// =====================================================
 	placeholders := ""
 	for i := range data.Services {
 		if i > 0 {
@@ -102,10 +129,10 @@ func CreateEPD(c *gin.Context, db *sql.DB) {
 	}
 
 	query := fmt.Sprintf(`
-        SELECT Наименование, Стоимость
-        FROM Услуга
-        WHERE Наименование IN (%s)
-    `, placeholders)
+		SELECT Наименование, Стоимость
+		FROM Услуга
+		WHERE Наименование IN (%s)
+	`, placeholders)
 
 	args := make([]any, len(data.Services))
 	for i, s := range data.Services {
@@ -131,11 +158,13 @@ func CreateEPD(c *gin.Context, db *sql.DB) {
 		}
 	}
 
-	// ========== ВСТАВКА ЕПД ==========
+	// =====================================================
+	// ВСТАВКА ЕПД
+	// =====================================================
 	_, err = db.Exec(`
-        INSERT INTO ЕПД (Номер_документа, Адрес, Расчётный_месяц, Сумма)
-        VALUES (@p1, @p2, @p3, @p4)
-    `, data.DocNumber, data.Address, data.BillingMonth, total)
+		INSERT INTO ЕПД (Номер_документа, Адрес, Расчётный_месяц, Сумма)
+		VALUES (@p1, @p2, @p3, @p4)
+	`, data.DocNumber, data.Address, data.BillingMonth, total)
 
 	if err != nil {
 		msg := err.Error()
@@ -154,12 +183,14 @@ func CreateEPD(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// ========== ВСТАВКА УСЛУГ ==========
+	// =====================================================
+	// ВСТАВКА УСЛУГ
+	// =====================================================
 	for name, price := range servicePrices {
 		_, err := db.Exec(`
-            INSERT INTO Данные_об_услуге (Наименование_услуги, Номер_ЕПД, Сумма)
-            VALUES (@p1, @p2, @p3)
-        `, name, data.DocNumber, price)
+			INSERT INTO Данные_об_услуге (Наименование_услуги, Номер_ЕПД, Сумма)
+			VALUES (@p1, @p2, @p3)
+		`, name, data.DocNumber, price)
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -198,14 +229,14 @@ func PayEPD(c *gin.Context, db *sql.DB) {
 // DELETE /epds/:id — удаление через процедуру DeleteEPDCascade
 //////////////////////////////////////////////////////////////////////
 
-func DeleteEPD(c *gin.Context, db *sql.DB) {
-	docNumber := c.Param("id")
+// func DeleteEPD(c *gin.Context, db *sql.DB) {
+// 	docNumber := c.Param("id")
 
-	_, err := db.Exec(`EXEC dbo.DeleteEPDCascade @p1`, docNumber)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+// 	_, err := db.Exec(`EXEC dbo.DeleteEPDCascade @p1`, docNumber)
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+// 		return
+// 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "ЕПД успешно удалён"})
-}
+// 	c.JSON(http.StatusOK, gin.H{"message": "ЕПД успешно удалён"})
+// }

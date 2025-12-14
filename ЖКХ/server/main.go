@@ -153,8 +153,8 @@ func RegisterRoutes(r *gin.Engine) {
 		api.PUT("/epds/:id/pay", middleware.RequireAuth(), middleware.RequireRole("client", "admin", "employee"),
 			func(c *gin.Context) { handlers.PayEPD(c, db) })
 
-		api.DELETE("/epds/:id", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
-			func(c *gin.Context) { handlers.DeleteEPD(c, db) })
+		// api.DELETE("/epds/:id", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
+		// 	func(c *gin.Context) { handlers.DeleteEPD(c, db) })
 
 		// ============================================
 		// DEBTS (admin + employee)

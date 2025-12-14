@@ -98,17 +98,17 @@ export default function EPDs() {
   };
 
   // === Удаление ЕПД ===
-  const handleDelete = async (docNumber: string) => {
-    if (!window.confirm("Вы уверены, что хотите удалить этот ЕПД?")) return;
+  // const handleDelete = async (docNumber: string) => {
+  //   if (!window.confirm("Вы уверены, что хотите удалить этот ЕПД?")) return;
 
-    await api
-      .delete(`/epds/${docNumber}`)
-      .then(() => {
-        alert("ЕПД успешно удалён");
-        loadEPDs();
-      })
-      .catch((err) => alert(err.response?.data?.error || err.message));
-  };
+  //   await api
+  //     .delete(`/epds/${docNumber}`)
+  //     .then(() => {
+  //       alert("ЕПД успешно удалён");
+  //       loadEPDs();
+  //     })
+  //     .catch((err) => alert(err.response?.data?.error || err.message));
+  // };
 
   return (
     <div style={{ backgroundColor: "#f5f6fa", minHeight: "100vh" }}>
@@ -309,7 +309,7 @@ export default function EPDs() {
                     </button>
                   )}
 
-                  <button
+                  {/* <button
                     onClick={() => handleDelete(e.docNumber)}
                     style={{
                       backgroundColor: "#dc3545",
@@ -321,7 +321,7 @@ export default function EPDs() {
                     }}
                   >
                     Удалить
-                  </button>
+                  </button> */}
                 </td>
               </tr>
             ))}
