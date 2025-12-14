@@ -10,22 +10,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ===== Получить клиентов (текущие или архив) =====
+// ===== Получить всех клиентов =====
 func GetClients(c *gin.Context, db *sql.DB) {
-	viewType := c.DefaultQuery("type", "client") // client или archive
-	search := c.Query("search")                  // текст из строки поиска
+	search := c.Query("search")
 
 	query := `
 		SELECT Id_клиента, ФИО, Номер_телефона
 		FROM Клиент
-		WHERE Роль = @p1
 	`
+	args := []interface{}{}
 
-	args := []interface{}{viewType}
-
-	// если введён текст для поиска — добавляем фильтр
 	if search != "" {
-		query += " AND (ФИО LIKE '%' + @p2 + '%' OR Номер_телефона LIKE '%' + @p2 + '%')"
+		query += `
+			WHERE ФИО LIKE '%' + @p1 + '%'
+			   OR Номер_телефона LIKE '%' + @p1 + '%'
+		`
 		args = append(args, search)
 	}
 
@@ -92,31 +91,4 @@ func UpdateClient(c *gin.Context, db *sql.DB) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Client updated"})
-}
-
-// ===== Архивировать клиента =====
-func ArchiveClient(c *gin.Context, db *sql.DB) {
-	id, _ := strconv.Atoi(c.Param("id"))
-
-	// Вызываем хранимую процедуру ArchiveClient
-	_, err := db.Exec("EXEC ArchiveClient @Id_клиента = @p1", id)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Клиент успешно архивирован"})
-}
-
-// ===== Разархивировать клиента =====
-func RestoreClient(c *gin.Context, db *sql.DB) {
-	id, _ := strconv.Atoi(c.Param("id"))
-
-	_, err := db.Exec("EXEC RestoreClient @p1", id)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Клиент успешно восстановлен"})
 }

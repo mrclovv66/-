@@ -27,12 +27,12 @@ export default function NavBar() {
       {/* ===== ADMIN ===== */}
       {role === "admin" && (
         <>
-          <Link to="/employees">Сотрудники</Link>
-          {/* <Link to="/clients">Клиенты</Link> */}
-          <Link to="/services">Услуги</Link>
-          <Link to="/reports">Отчёты</Link>
-          {/* <Link to="/apartments">Квартиры</Link>
-          <Link to="/epds">ЕПД</Link>
+          {/* <Link to="/employees">Сотрудники</Link> */}
+          <Link to="/clients">учёт Клиентов</Link>
+          <Link to="/apartments">учёт Квартир</Link>
+          <Link to="/services">учёт Услуг</Link>
+          <Link to="/reports">составление Отчётов</Link>
+          {/* <Link to="/epds">ЕПД</Link>
           <Link to="/debts">Задолженности</Link>
           <Link to="/requests">Заявки</Link> */}
         </>
@@ -41,12 +41,12 @@ export default function NavBar() {
       {/* ===== EMPLOYEE ===== */}
       {role === "employee" && (
         <>
-          <Link to="/clients">Клиенты</Link>
-          <Link to="/apartments">Квартиры</Link>
-          <Link to="/services">Услуги</Link>
-          <Link to="/meters">Показания</Link>
-          <Link to="/epds">ЕПД</Link>
-          <Link to="/debts">Задолженности</Link>
+          <Link to="/clients">учёт Клиентов</Link>
+          <Link to="/apartments">учёт Квартир</Link>
+          <Link to="/services">учёт Услуг</Link>
+          <Link to="/meters">учёт Показаний</Link>
+          <Link to="/epds">учёт ЕПД</Link>
+          <Link to="/debts">учёт Задолженностей</Link>
           <Link to="/requests">Заявки</Link>
         </>
       )}

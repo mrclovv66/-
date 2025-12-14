@@ -14,7 +14,7 @@ import EPDs from "./pages/EPDs";
 import Debts from "./pages/Debts";
 import Profile from "./pages/Profile";
 import Requests from "./pages/Requests";
-import Employees from "./pages/Employees";  
+// import Employees from "./pages/Employees";  
 import NotFound from "./pages/NotFound";
 import Reports from "./pages/Reports";
 
@@ -58,14 +58,14 @@ export default function App() {
           {/* ============================================
               ADMIN — может управлять сотрудниками
           ============================================ */}
-          <Route
+          {/* <Route
             path="/employees"
             element={
               <RoleRoute roles={["admin"]}>
                 <Employees />
               </RoleRoute>
             }
-          />
+          /> */}
           <Route
             path="/reports"
             element={

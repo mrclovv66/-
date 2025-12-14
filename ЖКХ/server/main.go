@@ -63,20 +63,20 @@ func RegisterRoutes(r *gin.Engine) {
 		// ============================================
 		// EMPLOYEES (admin)
 		// ============================================
-		api.GET("/employees", middleware.RequireAuth(), middleware.RequireRole("admin"),
-			func(c *gin.Context) { handlers.GetEmployees(c, db) })
+		// api.GET("/employees", middleware.RequireAuth(), middleware.RequireRole("admin"),
+		// 	func(c *gin.Context) { handlers.GetEmployees(c, db) })
 
-		api.POST("/employees", middleware.RequireAuth(), middleware.RequireRole("admin"),
-			func(c *gin.Context) { handlers.CreateEmployee(c, db) })
+		// api.POST("/employees", middleware.RequireAuth(), middleware.RequireRole("admin"),
+		// 	func(c *gin.Context) { handlers.CreateEmployee(c, db) })
 
-		api.PUT("/employees/:id", middleware.RequireAuth(), middleware.RequireRole("admin"),
-			func(c *gin.Context) { handlers.UpdateEmployee(c, db) })
+		// api.PUT("/employees/:id", middleware.RequireAuth(), middleware.RequireRole("admin"),
+		// 	func(c *gin.Context) { handlers.UpdateEmployee(c, db) })
 
-		api.DELETE("/employees/:id", middleware.RequireAuth(), middleware.RequireRole("admin"),
-			func(c *gin.Context) { handlers.ArchiveEmployee(c, db) })
+		// api.DELETE("/employees/:id", middleware.RequireAuth(), middleware.RequireRole("admin"),
+		// 	func(c *gin.Context) { handlers.ArchiveEmployee(c, db) })
 
-		api.PUT("/employees/:id/restore", middleware.RequireAuth(), middleware.RequireRole("admin"),
-			func(c *gin.Context) { handlers.RestoreEmployee(c, db) })
+		// api.PUT("/employees/:id/restore", middleware.RequireAuth(), middleware.RequireRole("admin"),
+		// 	func(c *gin.Context) { handlers.RestoreEmployee(c, db) })
 
 		// ============================================
 		// CLIENTS (admin + employee)
@@ -89,12 +89,6 @@ func RegisterRoutes(r *gin.Engine) {
 
 		api.PUT("/clients/:id", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
 			func(c *gin.Context) { handlers.UpdateClient(c, db) })
-
-		api.PUT("/clients/:id/archive", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
-			func(c *gin.Context) { handlers.ArchiveClient(c, db) })
-
-		api.PUT("/clients/:id/restore", middleware.RequireAuth(), middleware.RequireRole("admin", "employee"),
-			func(c *gin.Context) { handlers.RestoreClient(c, db) })
 
 		// ============================================
 		// APARTMENTS (admin + employee)

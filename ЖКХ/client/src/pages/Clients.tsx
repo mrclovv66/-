@@ -113,7 +113,7 @@ export default function Clients() {
       <h2>Клиенты</h2>
 
       {/* Переключатель текущие / архив */}
-      <div style={{ marginBottom: 16 }}>
+      {/* <div style={{ marginBottom: 16 }}>
         <button
           onClick={() => setViewMode("client")}
           style={{
@@ -141,7 +141,7 @@ export default function Clients() {
         >
           Архив
         </button>
-      </div>
+      </div> */}
 
       {/* Поиск (серверный) */}
       <div style={{ marginBottom: 16 }}>
@@ -332,7 +332,7 @@ export default function Clients() {
                         >
                           Редактировать
                         </button>
-                        <button
+                        {/* <button
                           onClick={() => handleArchiveClient(c.id)}
                           style={{
                             padding: "5px 10px",
@@ -344,7 +344,7 @@ export default function Clients() {
                           }}
                         >
                           В архив
-                        </button>
+                        </button> */}
                       </>
                     ) : (
                       <button

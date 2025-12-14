@@ -20,35 +20,77 @@ type Claims struct {
 // ======== Авторизация ========
 func LoginHandler(c *gin.Context, db *sql.DB) {
 	var creds struct {
-		Username string `json:"username"` // сюда будет приходить номер телефона
+		Username string `json:"username"`
 		Password string `json:"password"`
 	}
-	if err := c.BindJSON(&creds); err != nil {
+
+	if err := c.ShouldBindJSON(&creds); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат запроса"})
 		return
 	}
 
-	// 🔹 Ищем пользователя по номеру телефона
-	var clientID int
-	var dbPassword, role string
-	err := db.QueryRow(`
-		SELECT [Id_клиента], [Пароль], [Роль]
-		FROM [Клиент]
-		WHERE [Номер_телефона] = @p1`, creds.Username).
-		Scan(&clientID, &dbPassword, &role)
-
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Пользователь не найден"})
+	// ============================================
+	// 1. РУКОВОДИТЕЛЬ (общая учётка)
+	// ============================================
+	if creds.Username == "admin" && creds.Password == "adm123" {
+		token := generateToken(0, "admin")
+		c.JSON(http.StatusOK, gin.H{
+			"token": token,
+			"role":  "admin",
+		})
 		return
 	}
 
-	// 🔹 Проверяем пароль
+	// ============================================
+	// 2. СОТРУДНИК (общая учётка)
+	// ============================================
+	if creds.Username == "employee" && creds.Password == "emp123" {
+		token := generateToken(0, "employee")
+		c.JSON(http.StatusOK, gin.H{
+			"token": token,
+			"role":  "employee",
+		})
+		return
+	}
+
+	// ============================================
+	// 3. КЛИЕНТ (из БД)
+	// ============================================
+	var clientID int
+	var dbPassword string
+
+	err := db.QueryRow(`
+		SELECT Id_клиента, Пароль
+		FROM Клиент
+		WHERE Номер_телефона = @p1
+	`, creds.Username).Scan(&clientID, &dbPassword)
+
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Пользователь не найден"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка БД"})
+		return
+	}
+
 	if creds.Password != dbPassword {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Неверный пароль"})
 		return
 	}
 
-	// 🔹 Создаём JWT токен
+	token := generateToken(clientID, "client")
+
+	c.JSON(http.StatusOK, gin.H{
+		"token": token,
+		"role":  "client",
+	})
+}
+
+// ============================================
+// Вспомогательная функция генерации JWT
+// ============================================
+func generateToken(clientID int, role string) string {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &Claims{
 		ClientID: clientID,
 		Role:     role,
@@ -56,16 +98,9 @@ func LoginHandler(c *gin.Context, db *sql.DB) {
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 		},
 	})
-	tokenString, err := token.SignedString(JwtSecret)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка создания токена"})
-		return
-	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"token": tokenString,
-		"role":  role,
-	})
+	tokenString, _ := token.SignedString(JwtSecret)
+	return tokenString
 }
 
 // ======== Профиль ========
