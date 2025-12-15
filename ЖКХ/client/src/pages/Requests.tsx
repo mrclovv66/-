@@ -157,14 +157,6 @@ export default function Requests() {
         );
       case "выполнена":
       case "отклонена":
-        return (
-          <button
-            onClick={() => deleteRequest(r.id)}
-            style={{ ...btnStyle, backgroundColor: "#6c757d" }}
-          >
-            Удалить
-          </button>
-        );
       default:
         return null;
     }
@@ -299,7 +291,7 @@ export default function Requests() {
                   <td>{r.address}</td>
                   <td>{r.request_type}</td>
                   <td>{r.description}</td>
-                  <td>{new Date(r.created_at).toLocaleDateString("ru-RU")}</td>
+                  <td>{r.created_at.split("-").reverse().join(".")}</td>
                   <td>{r.status}</td>
                   {(role === "employee" || role === "admin") && (
                     <td>{renderStatusButtons(r)}</td>

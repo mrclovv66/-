@@ -715,15 +715,17 @@ func GetPaymentHistory(c *gin.Context, db *sql.DB) {
 
 	query := `
 		SELECT 
-			FORMAT(Дата_оплаты, 'yyyy-MM-dd'),
-			Номер_документа,
-			Адрес,
-			Сумма
-		FROM Платежи
-		WHERE Дата_оплаты BETWEEN @p1 AND @p2
+			FORMAT(p.Дата_оплаты, 'yyyy-MM-dd') AS Дата,
+			p.Номер_документа,
+			e.Адрес,
+			p.Сумма
+		FROM Платежи p
+		JOIN ЕПД e ON e.Номер_документа = p.Номер_документа
+		WHERE p.Дата_оплаты BETWEEN @p1 AND @p2
 	`
+
 	if address != "" {
-		query += " AND Адрес = @p3"
+		query += " AND e.Адрес = @p3"
 	}
 
 	var rows *sql.Rows
@@ -774,15 +776,17 @@ func DownloadHistoryExcel(c *gin.Context, db *sql.DB) {
 
 	query := `
 		SELECT 
-			FORMAT(Дата_оплаты, 'yyyy-MM-dd'),
-			Номер_документа,
-			Адрес,
-			Сумма
-		FROM Платежи
-		WHERE Дата_оплаты BETWEEN @p1 AND @p2
+			FORMAT(p.Дата_оплаты, 'yyyy-MM-dd'),
+			p.Номер_документа,
+			e.Адрес,
+			p.Сумма
+		FROM Платежи p
+		JOIN ЕПД e ON e.Номер_документа = p.Номер_документа
+		WHERE p.Дата_оплаты BETWEEN @p1 AND @p2
 	`
+
 	if address != "" {
-		query += " AND Адрес = @p3"
+		query += " AND e.Адрес = @p3"
 	}
 
 	var rows *sql.Rows

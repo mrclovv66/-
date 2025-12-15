@@ -11,8 +11,7 @@ import (
 
 type Request struct {
 	ID          int    `json:"id"`
-	ClientID    int    `json:"client_id"`
-	FullName    string `json:"full_name"`
+	FullName    string `json:"full_name"` // 👈 имя владельца квартиры
 	Address     string `json:"address"`
 	RequestType string `json:"request_type"`
 	Description string `json:"description"`
@@ -20,7 +19,9 @@ type Request struct {
 	Status      string `json:"status"`
 }
 
-// ===== Получение списка заявок (поиск только для employee/admin) =====
+// ////////////////////////////////////////////////////////////////////
+// GET /requests — список заявок
+// ////////////////////////////////////////////////////////////////////
 func GetRequests(c *gin.Context, db *sql.DB) {
 	role, _ := c.Get("role")
 	clientID, _ := c.Get("client_id")
@@ -29,12 +30,11 @@ func GetRequests(c *gin.Context, db *sql.DB) {
 	var rows *sql.Rows
 	var err error
 
-	switch role {
-	case "client":
+	// ===== КЛИЕНТ =====
+	if role == "client" {
 		rows, err = db.Query(`
 			SELECT 
 				z.[ID_заявки],
-				z.[ID_клиента],
 				'' AS [ФИО_клиента],
 				z.[Адрес_квартиры],
 				z.[Тип_заявки],
@@ -42,29 +42,48 @@ func GetRequests(c *gin.Context, db *sql.DB) {
 				z.[Дата_создания],
 				z.[Статус]
 			FROM [Заявки] z
-			WHERE z.[ID_клиента] = @p1
+			JOIN [Квартира] k ON z.[Адрес_квартиры] = k.[Адрес]
+			WHERE k.[Id_владельца] = @p1
 			ORDER BY z.[Дата_создания] DESC
 		`, clientID)
 
-	default:
+	} else {
+		// ===== СОТРУДНИК / АДМИН =====
 		if search == "" {
 			rows, err = db.Query(`
 				SELECT 
 					z.[ID_заявки],
-					z.[ID_клиента],
-					k.[ФИО] AS [ФИО_клиента],
+					c.[ФИО] AS [ФИО_клиента],
 					z.[Адрес_квартиры],
 					z.[Тип_заявки],
 					z.[Описание],
 					z.[Дата_создания],
 					z.[Статус]
 				FROM [Заявки] z
-				JOIN [Клиент] k ON z.[ID_клиента] = k.[Id_клиента]
+				JOIN [Квартира] k ON z.[Адрес_квартиры] = k.[Адрес]
+				JOIN [Клиент]  c ON k.[Id_владельца] = c.[Id_клиента]
 				ORDER BY z.[Дата_создания] DESC
 			`)
 		} else {
-			// Поиск — через T-SQL функцию
-			rows, err = db.Query(`SELECT * FROM dbo.SearchRequests(@p1)`, search)
+			rows, err = db.Query(`
+				SELECT 
+					z.[ID_заявки],
+					c.[ФИО] AS [ФИО_клиента],
+					z.[Адрес_квартиры],
+					z.[Тип_заявки],
+					z.[Описание],
+					z.[Дата_создания],
+					z.[Статус]
+				FROM [Заявки] z
+				JOIN [Квартира] k ON z.[Адрес_квартиры] = k.[Адрес]
+				JOIN [Клиент]  c ON k.[Id_владельца] = c.[Id_клиента]
+				WHERE 
+					c.[ФИО]            LIKE '%' + @p1 + '%' OR
+					z.[Адрес_квартиры] LIKE '%' + @p1 + '%' OR
+					z.[Тип_заявки]     LIKE '%' + @p1 + '%' OR
+					z.[Статус]         LIKE '%' + @p1 + '%'
+				ORDER BY z.[Дата_создания] DESC
+			`, search)
 		}
 	}
 
@@ -75,26 +94,37 @@ func GetRequests(c *gin.Context, db *sql.DB) {
 	defer rows.Close()
 
 	var requests []Request
+
 	for rows.Next() {
 		var r Request
 		var rawDate sql.NullTime
+
 		if err := rows.Scan(
-			&r.ID, &r.ClientID, &r.FullName, &r.Address,
-			&r.RequestType, &r.Description, &rawDate, &r.Status,
+			&r.ID,
+			&r.FullName,
+			&r.Address,
+			&r.RequestType,
+			&r.Description,
+			&rawDate,
+			&r.Status,
 		); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+
 		if rawDate.Valid {
 			r.CreatedAt = rawDate.Time.Format("2006-01-02")
 		}
+
 		requests = append(requests, r)
 	}
 
 	c.JSON(http.StatusOK, requests)
 }
 
-// ===== Создание заявки (для клиента) =====
+// ////////////////////////////////////////////////////////////////////
+// POST /requests — создание заявки (клиент)
+// ////////////////////////////////////////////////////////////////////
 func CreateRequest(c *gin.Context, db *sql.DB) {
 	clientID, exists := c.Get("client_id")
 	if !exists {
@@ -113,12 +143,26 @@ func CreateRequest(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	// Добавляем запись с текущей датой
-	_, err := db.Exec(`
+	// 🔒 проверка: квартира принадлежит клиенту
+	var ok int
+	err := db.QueryRow(`
+		SELECT 1
+		FROM [Квартира]
+		WHERE [Адрес] = @p1 AND [Id_владельца] = @p2
+	`, req.Address, clientID).Scan(&ok)
+
+	if err != nil {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "Эта квартира вам не принадлежит",
+		})
+		return
+	}
+
+	_, err = db.Exec(`
 		INSERT INTO [Заявки]
-		([ID_клиента], [Адрес_квартиры], [Тип_заявки], [Описание], [Дата_создания])
-		VALUES (@p1, @p2, @p3, @p4, CAST(GETDATE() AS DATE))
-	`, clientID, req.Address, req.RequestType, req.Description)
+		([Адрес_квартиры], [Тип_заявки], [Описание], [Дата_создания])
+		VALUES (@p1, @p2, @p3, CAST(GETDATE() AS DATE))
+	`, req.Address, req.RequestType, req.Description)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -128,7 +172,9 @@ func CreateRequest(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusCreated, gin.H{"message": "Заявка успешно создана"})
 }
 
-// ===== Обновление статуса заявки (для сотрудников/админов) =====
+// ////////////////////////////////////////////////////////////////////
+// PUT /requests/:id/status — обновление статуса
+// ////////////////////////////////////////////////////////////////////
 func UpdateRequestStatus(c *gin.Context, db *sql.DB) {
 	role, _ := c.Get("role")
 	if role == "client" {
@@ -137,6 +183,7 @@ func UpdateRequestStatus(c *gin.Context, db *sql.DB) {
 	}
 
 	id, _ := strconv.Atoi(c.Param("id"))
+
 	var req struct {
 		Status string `json:"status"`
 	}
@@ -147,8 +194,11 @@ func UpdateRequestStatus(c *gin.Context, db *sql.DB) {
 	}
 
 	_, err := db.Exec(`
-		UPDATE [Заявки] SET [Статус] = @p1 WHERE [ID_заявки] = @p2
+		UPDATE [Заявки]
+		SET [Статус] = @p1
+		WHERE [ID_заявки] = @p2
 	`, req.Status, id)
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -157,10 +207,17 @@ func UpdateRequestStatus(c *gin.Context, db *sql.DB) {
 	c.JSON(http.StatusOK, gin.H{"message": "Статус обновлён"})
 }
 
-// ===== Удаление заявки =====
+// ////////////////////////////////////////////////////////////////////
+// DELETE /requests/:id — удаление заявки (ТОЛЬКО клиент)
+// ////////////////////////////////////////////////////////////////////
 func DeleteRequest(c *gin.Context, db *sql.DB) {
 	role, _ := c.Get("role")
 	clientID, _ := c.Get("client_id")
+
+	if role != "client" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Недостаточно прав"})
+		return
+	}
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -168,34 +225,24 @@ func DeleteRequest(c *gin.Context, db *sql.DB) {
 		return
 	}
 
-	if role == "client" {
-		// 🔒 клиент может удалить только СВОЮ заявку
-		res, err := db.Exec(`
-			DELETE FROM [Заявки]
-			WHERE [ID_заявки] = @p1 AND [ID_клиента] = @p2
-		`, id, clientID)
+	res, err := db.Exec(`
+		DELETE z
+		FROM [Заявки] z
+		JOIN [Квартира] k ON z.[Адрес_квартиры] = k.[Адрес]
+		WHERE z.[ID_заявки] = @p1
+		  AND k.[Id_владельца] = @p2
+	`, id, clientID)
 
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		rows, _ := res.RowsAffected()
-		if rows == 0 {
-			c.JSON(http.StatusForbidden, gin.H{
-				"error": "Нет прав на удаление этой заявки",
-			})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"message": "Заявка удалена"})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// 🔓 employee / admin — без ограничений
-	_, err = db.Exec(`DELETE FROM [Заявки] WHERE [ID_заявки] = @p1`, id)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "Нет прав на удаление этой заявки",
+		})
 		return
 	}
 
