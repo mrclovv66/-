@@ -12,6 +12,7 @@ type Request = {
   description: string;
   created_at: string;
   status: string;
+  comment?: string;
 };
 
 type Apartment = {
@@ -27,7 +28,8 @@ export default function Requests() {
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [searchTerm, setSearchTerm] = useState(""); // 🔍 поиск
+  const [searchTerm, setSearchTerm] = useState(""); 
+  const [commentDraft, setCommentDraft] = useState<Record<number, string>>({});
 
   // === загрузка заявок ===
   const loadRequests = async () => {
@@ -95,14 +97,15 @@ export default function Requests() {
   };
 
   // === обновление статуса заявки ===
-  const updateStatus = async (id: number, status: string) => {
+  const updateStatus = async (id: number, status: string, comment?: string) => {
     try {
-      await api.put(`/requests/${id}/status`, { status });
+      await api.put(`/requests/${id}/status`, { status, comment });
       loadRequests();
     } catch (err: any) {
       alert("Ошибка изменения статуса: " + (err.response?.data?.error || err.message));
     }
   };
+
 
   // === удаление заявки ===
   const deleteRequest = async (id: number) => {
@@ -140,21 +143,34 @@ export default function Requests() {
         );
       case "в работе":
         return (
-          <>
-            <button
-              onClick={() => updateStatus(r.id, "выполнена")}
-              style={{ ...btnStyle, backgroundColor: "#28a745", marginRight: 8 }}
-            >
-              Выполнена
-            </button>
-            <button
-              onClick={() => updateStatus(r.id, "отклонена")}
-              style={{ ...btnStyle, backgroundColor: "#dc3545" }}
-            >
-              Отклонена
-            </button>
-          </>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <textarea
+              placeholder="Комментарий (нужен при выполнении/отклонении)"
+              value={commentDraft[r.id] || ""}
+              onChange={(e) =>
+                setCommentDraft((prev) => ({ ...prev, [r.id]: e.target.value }))
+              }
+              rows={3}
+              style={{ width: 220, padding: 6 }}
+            />
+
+            <div>
+              <button
+                onClick={() => updateStatus(r.id, "выполнена", commentDraft[r.id])}
+                style={{ ...btnStyle, backgroundColor: "#28a745", marginRight: 8 }}
+              >
+                Выполнена
+              </button>
+              <button
+                onClick={() => updateStatus(r.id, "отклонена", commentDraft[r.id])}
+                style={{ ...btnStyle, backgroundColor: "#dc3545" }}
+              >
+                Отклонена
+              </button>
+            </div>
+          </div>
         );
+
       case "выполнена":
       case "отклонена":
       default:
@@ -289,8 +305,22 @@ export default function Requests() {
                   <td>{r.id}</td>
                   {(role === "employee" || role === "admin") && <td>{r.full_name}</td>}
                   <td>{r.address}</td>
-                  <td>{r.request_type}</td>
-                  <td>{r.description}</td>
+                  <td >{r.request_type}</td>
+                  <td>
+                    {r.description}
+                    {r.comment && (
+                    <div style={{
+                        marginTop: 6,
+                        padding: 8,
+                        background: "#f1f3f5",
+                        borderLeft: "4px solid #0d6efd",
+                        fontSize: 14,
+                      }}>
+                        <b>Комментарий:</b> {r.comment}
+                    </div>
+                  )}
+                  </td>
+                  
                   <td>{r.created_at.split("-").reverse().join(".")}</td>
                   <td>{r.status}</td>
                   {(role === "employee" || role === "admin") && (
